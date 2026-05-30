@@ -1,26 +1,24 @@
-name: 自動更新 Firestore 規則
+name: auto-update-firestore-rules
 
 on:
   schedule:
-    # 每 25 天執行一次（確保不超過 30 天免費期）
-    # 格式：分 時 日 月 週
     - cron: '0 2 */25 * *'
-  workflow_dispatch:  # 允許手動觸發
+  workflow_dispatch:
 
 jobs:
   update-firestore-rules:
     runs-on: ubuntu-latest
     steps:
-      - name: 取得程式碼
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 安裝 Firebase CLI
+      - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: 部署 Firestore 規則
+      - name: Deploy Firestore Rules
         run: firebase deploy --only firestore:rules --project travel-planner-n-cost
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
-      - name: 顯示結果
-        run: echo "✅ Firestore 規則已成功更新！allow read, write: if true"
+      - name: Done
+        run: echo "Firestore rules updated successfully"
