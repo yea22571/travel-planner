@@ -119,6 +119,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #2c7be5
 .cat-badge {
   font-size: 0.68rem; padding: 2px 7px; border-radius: 20px; margin-left: 5px; font-weight: 500;
 }
+.activity-location { font-size: 0.76rem; color: #4a9e6b; margin-top: 2px; }
+.btn-nav { background: #38a169; color: white; font-size: 0.8rem; padding: 5px 10px; }
 .cat-transport { background: #bee3f8; color: #2b6cb0; }
 .cat-hotel { background: #fefcbf; color: #744210; }
 .cat-food { background: #fed7d7; color: #9b2335; }
@@ -316,6 +318,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #2c7be5
           <div class="form-group" style="flex:2">
             <label>活動名稱</label>
             <input type="text" id="actTitle" placeholder="例：搭乘新幹線到大阪">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:2">
+            <label>📍 地點（用於導航）</label>
+            <input type="text" id="actLocation" placeholder="例：大阪城公園、東京鐵塔、新宿車站">
           </div>
         </div>
         <div class="form-row">
@@ -688,16 +696,26 @@ window.addActivity = async function() {
     date: document.getElementById('actDate').value,
     time: document.getElementById('actTime').value,
     cat: document.getElementById('actCat').value,
-    title, note: document.getElementById('actNote').value.trim(),
+    title,
+    location: document.getElementById('actLocation').value.trim(),
+    note: document.getElementById('actNote').value.trim(),
     createdAt: serverTimestamp()
   });
   document.getElementById('actTitle').value = '';
+  document.getElementById('actLocation').value = '';
   document.getElementById('actNote').value = '';
   showToast('活動已新增');
 };
 
 window.deleteActivity = async function(id) {
   await deleteDoc(doc(db, 'trips', tripId, 'activities', id));
+};
+
+window.openNav = function(location) {
+  // 優先開啟手機 Google Maps App，桌機開啟網頁版
+  const encoded = encodeURIComponent(location);
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${encoded}&travelmode=transit`;
+  window.open(url, '_blank');
 };
 
 function renderItinerary() {
@@ -715,9 +733,13 @@ function renderItinerary() {
         <div class="activity-time">${a.time||'--:--'}</div>
         <div class="activity-content">
           <div class="activity-title">${esc(a.title)}<span class="cat-badge cat-${a.cat}">${CAT_LABELS[a.cat]}</span></div>
+          ${a.location ? `<div class="activity-location">📍 ${esc(a.location)}</div>` : ''}
           ${a.note ? `<div class="activity-note">${esc(a.note)}</div>` : ''}
         </div>
-        <button class="btn btn-danger" onclick="deleteActivity('${a.id}')">刪除</button>
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+          ${a.location ? `<button class="btn btn-nav" onclick="openNav('${esc(a.location)}')">🗺️ 導航</button>` : ''}
+          <button class="btn btn-danger" onclick="deleteActivity('${a.id}')">刪除</button>
+        </div>
       </div>`).join('');
     return `<div class="card"><div class="day-block"><div class="day-header"><h3>${label}</h3></div>${items}</div></div>`;
   }).join('');
