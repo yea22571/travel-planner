@@ -490,11 +490,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #2c7be5
       <div class="form-group" style="flex:2"><label>目的地</label><input type="text" id="tripDest" placeholder="例：日本、韓國..."></div>
     </div>
     <hr style="border:none;border-top:1px solid #e2e8f0;margin:12px 0">
-    <div style="font-size:0.82rem;color:#6b46c1;font-weight:600;margin-bottom:8px">🔑 Claude API Key（拍照辨識）</div>
+    <div style="font-size:0.82rem;color:#6b46c1;font-weight:600;margin-bottom:8px">🔑 Gemini API Key（拍照辨識）</div>
     <div class="form-group">
-      <label>Anthropic API Key</label>
-      <input type="password" id="apiKeyInput" placeholder="sk-ant-...">
-      <div class="api-note">僅存於本機，不同步給旅伴。取得：<a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></div>
+      <label>Google Gemini API Key</label>
+      <input type="password" id="apiKeyInput" placeholder="AIzaSy...">
+      <div class="api-note">僅存於本機，不同步給旅伴。免費取得：<a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('settingsModal')">取消</button>
@@ -877,44 +877,44 @@ function setScanStatus(msg, err) {
 window.scanReceipt = async function() {
   if (!photoBase64) return;
   const apiKey = getApiKey();
-  if (!apiKey) { setScanStatus('❌ 請先在設定中輸入 Anthropic API Key', true); return; }
+  if (!apiKey) { setScanStatus('❌ 請先在設定中輸入 Gemini API Key', true); return; }
   const btn = document.getElementById('scanBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 辨識中...';
   setScanStatus('<span class="spinner"></span> 正在分析圖片...', false);
   document.getElementById('scanResults').style.display = 'none';
 
+  const prompt = `分析這張收據/帳單，回傳JSON（只回傳JSON不要其他文字）：
+{"currency":"貨幣代碼如JPY/TWD/USD/KRW","items":[{"name_zh":"繁體中文名稱","name_orig":"原文","amount":數字,"category":"food/transport/hotel/attraction/shopping/other"}],"total":總計或null,"note":"店名等備註"}
+若無法辨識回傳{"error":"說明"}`;
+
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: photoMediaType, data: photoBase64 } },
-          { type: 'text', text: `分析這張收據/帳單，回傳JSON（只回傳JSON不要其他文字）：
-{"currency":"貨幣代碼如JPY","items":[{"name_zh":"繁體中文名稱","name_orig":"原文","amount":數字,"category":"food/transport/hotel/attraction/shopping/other"}],"total":總計或null,"note":"店名等備註"}
-若無法辨識回傳{"error":"說明"}` }
-        ]}]
-      })
-    });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message||`HTTP ${res.status}`); }
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { inline_data: { mime_type: photoMediaType, data: photoBase64 } },
+            { text: prompt }
+          ]}],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
+        })
+      }
+    );
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
     const data = await res.json();
-    const raw = data.content[0].text.trim().replace(/^```json\n?/,'').replace(/\n?```$/,'');
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+      .replace(/^```json\n?/, '').replace(/\n?```$/, '') || '{}';
     const parsed = JSON.parse(raw);
     if (parsed.error) { setScanStatus(`❌ ${parsed.error}`, true); return; }
     if (parsed.currency) {
       const sel = document.getElementById('expCurrency');
-      for (const o of sel.options) if (o.value===parsed.currency) { sel.value=parsed.currency; break; }
+      for (const o of sel.options) if (o.value === parsed.currency) { sel.value = parsed.currency; break; }
     }
     scanItems = parsed.items || [];
     renderScanItems();
-    setScanStatus(`✅ 找到 ${scanItems.length} 個項目${parsed.note ? '・'+parsed.note : ''}`, false);
+    setScanStatus(`✅ 找到 ${scanItems.length} 個項目${parsed.note ? '・' + parsed.note : ''}`, false);
   } catch(e) { setScanStatus(`❌ ${e.message}`, true); }
 
   btn.disabled = false; btn.innerHTML = '🔍 重新辨識';
@@ -986,7 +986,7 @@ window.copyTripCode = function() {
 
 function updateApiKeyStatus() {
   const el = document.getElementById('apiKeyStatus');
-  el.textContent = getApiKey() ? '✅ API Key 已設定' : '⚠️ 未設定 API Key（請至設定填入）';
+  el.textContent = getApiKey() ? '✅ Gemini API Key 已設定' : '⚠️ 未設定 Gemini API Key（請至設定填入）';
   el.style.color = getApiKey() ? '#48bb78' : '#ed8936';
 }
 
