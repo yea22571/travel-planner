@@ -1,236 +1,333 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>旅遊規劃助手 ✈️</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; color: #333; }
+body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #0a0e1a; color: #e8ecf4; min-height: 100vh; }
 
 /* ---- Home Screen ---- */
 #homeScreen {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #1a365d 0%, #2c7be5 50%, #4db6ac 100%);
+  background: radial-gradient(ellipse at top, #1a1030 0%, #0a0e1a 60%);
   padding: 24px;
 }
 .home-card {
-  background: white; border-radius: 20px; padding: 36px 32px;
-  width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  background: #141824; border-radius: 24px; padding: 36px 32px;
+  width: 100%; max-width: 400px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px #2a3040;
 }
 .home-logo { font-size: 2.5rem; text-align: center; margin-bottom: 8px; }
-.home-title { text-align: center; font-size: 1.3rem; font-weight: 700; color: #1a365d; margin-bottom: 4px; }
-.home-subtitle { text-align: center; font-size: 0.85rem; color: #888; margin-bottom: 28px; }
-.home-divider { display: flex; align-items: center; gap: 10px; margin: 20px 0; color: #aaa; font-size: 0.82rem; }
-.home-divider::before, .home-divider::after { content:''; flex:1; height:1px; background:#e2e8f0; }
+.home-title { text-align: center; font-size: 1.3rem; font-weight: 700; color: #f0f2f7; margin-bottom: 4px; }
+.home-subtitle { text-align: center; font-size: 0.85rem; color: #6b7a8d; margin-bottom: 28px; }
+.home-divider { display: flex; align-items: center; gap: 10px; margin: 20px 0; color: #3a4560; font-size: 0.82rem; }
+.home-divider::before, .home-divider::after { content:''; flex:1; height:1px; background:#2a3040; }
 
 /* ---- App ---- */
 #appScreen { display: none; }
 header {
-  background: linear-gradient(135deg, #2c7be5, #4db6ac);
-  color: white; padding: 14px 20px;
+  background: #141824; color: white; padding: 14px 20px;
   display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid #2a3040; position: sticky; top: 0; z-index: 100;
 }
 .header-info { flex: 1; }
-.header-info h1 { font-size: 1.1rem; }
-.header-meta { font-size: 0.78rem; opacity: 0.85; margin-top: 2px; }
+.header-info h1 { font-size: 1.1rem; color: #f0f2f7; }
+.header-meta { font-size: 0.78rem; color: #6b7a8d; margin-top: 2px; }
 .trip-code-badge {
-  background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4);
-  border-radius: 8px; padding: 6px 10px; text-align: center; cursor: pointer;
+  background: #1e2538; border: 1px solid #3a4560;
+  border-radius: 12px; padding: 6px 12px; text-align: center; cursor: pointer;
   transition: background 0.2s; flex-shrink: 0;
 }
-.trip-code-badge:hover { background: rgba(255,255,255,0.3); }
-.trip-code-label { font-size: 0.65rem; opacity: 0.8; }
-.trip-code-value { font-size: 1rem; font-weight: 800; letter-spacing: 2px; }
+.trip-code-badge:hover { background: #252d45; }
+.trip-code-label { font-size: 0.65rem; color: #6b7a8d; }
+.trip-code-value { font-size: 1rem; font-weight: 800; letter-spacing: 2px; color: #e8526a; }
 
 nav {
-  display: flex; background: white;
-  border-bottom: 2px solid #e2e8f0; padding: 0 12px;
-  overflow-x: auto;
+  display: flex; background: #141824;
+  border-bottom: 1px solid #2a3040; padding: 10px 14px; gap: 8px;
+  overflow-x: auto; scrollbar-width: none;
 }
+nav::-webkit-scrollbar { display: none; }
 nav button {
-  padding: 12px 16px; border: none; background: none; cursor: pointer;
-  font-size: 0.9rem; color: #666; border-bottom: 3px solid transparent;
+  padding: 8px 16px; border: 1px solid #2a3040; background: #1e2538; cursor: pointer;
+  font-size: 0.85rem; color: #8892a4; border-radius: 20px;
   transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
 }
-nav button.active { color: #2c7be5; border-bottom-color: #2c7be5; font-weight: 600; }
+nav button.active {
+  background: linear-gradient(135deg, #e8526a, #c13584);
+  color: white; border-color: transparent; font-weight: 600;
+  box-shadow: 0 4px 14px rgba(232,82,106,0.35);
+}
+nav button:hover:not(.active) { background: #252d45; color: #e8ecf4; border-color: #3a4560; }
 
 main { max-width: 900px; margin: 16px auto; padding: 0 14px; }
 .page { display: none; }
 .page.active { display: block; }
 
 .card {
-  background: white; border-radius: 12px; padding: 18px;
-  margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  background: #141824; border-radius: 16px; padding: 18px;
+  margin-bottom: 14px; border: 1px solid #2a3040;
 }
-.card h2 { font-size: 1rem; margin-bottom: 14px; color: #2c7be5; }
+.card h2 { font-size: 1rem; margin-bottom: 14px; color: #e8526a; font-weight: 700; }
 
 .form-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
 .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 130px; }
-label { font-size: 0.78rem; color: #666; font-weight: 500; }
+label { font-size: 0.78rem; color: #8892a4; font-weight: 500; }
 input, select, textarea {
-  padding: 8px 10px; border: 1.5px solid #dde1e7; border-radius: 8px;
-  font-size: 0.88rem; transition: border-color 0.2s; background: white;
+  padding: 8px 10px; border: 1.5px solid #2a3040; border-radius: 10px;
+  font-size: 0.88rem; transition: border-color 0.2s;
+  background: #1e2538; color: #e8ecf4;
 }
-input:focus, select:focus, textarea:focus { outline: none; border-color: #2c7be5; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: #e8526a; box-shadow: 0 0 0 3px rgba(232,82,106,0.12); }
+input::placeholder { color: #3a4560; }
+select option { background: #1e2538; color: #e8ecf4; }
 
 .btn {
-  padding: 9px 16px; border: none; border-radius: 8px;
+  padding: 9px 18px; border: none; border-radius: 20px;
   cursor: pointer; font-size: 0.88rem; font-weight: 500; transition: all 0.2s;
 }
-.btn:hover { opacity: 0.85; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary { background: #2c7be5; color: white; }
-.btn-success { background: #38a169; color: white; }
-.btn-danger { background: #e53e3e; color: white; font-size: 0.8rem; padding: 4px 10px; }
-.btn-outline { background: white; border: 1.5px solid #2c7be5; color: #2c7be5; }
-.btn-purple { background: linear-gradient(135deg,#6b46c1,#9f7aea); color: white; }
-.btn-lg { padding: 12px 20px; font-size: 1rem; width: 100%; margin-bottom: 10px; }
-.btn-ghost { background: #f0f4f8; color: #555; }
+.btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-primary { background: linear-gradient(135deg, #e8526a, #c13584); color: white; box-shadow: 0 4px 14px rgba(232,82,106,0.3); }
+.btn-success { background: linear-gradient(135deg, #22c55e, #4ade80); color: #052e16; font-weight: 700; }
+.btn-danger { background: #1e1018; color: #f87171; border: 1px solid #3a1a28; font-size: 0.78rem; padding: 4px 10px; border-radius: 12px; }
+.btn-danger:hover { background: #f87171; color: white; opacity: 1; transform: none; }
+.btn-outline { background: transparent; border: 1.5px solid #e8526a; color: #e8526a; }
+.btn-purple { background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; box-shadow: 0 4px 14px rgba(168,85,247,0.25); }
+.btn-lg { padding: 13px 20px; font-size: 1rem; width: 100%; margin-bottom: 10px; border-radius: 14px; }
+.btn-ghost { background: #1e2538; color: #8892a4; border: 1px solid #2a3040; }
+.btn-ghost:hover { background: #252d45; color: #e8ecf4; opacity: 1; transform: none; }
 
 /* Sync indicator */
 .sync-dot {
   width: 8px; height: 8px; border-radius: 50%;
-  background: #48bb78; display: inline-block; margin-right: 4px;
+  background: #4ade80; display: inline-block; margin-right: 4px;
   animation: pulse 2s infinite;
 }
-.sync-dot.offline { background: #fc8181; animation: none; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.sync-dot.offline { background: #f87171; animation: none; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
 /* Members */
 .members-bar {
   display: flex; align-items: center; gap: 8px;
-  padding: 10px 14px; background: #f0fff4; border-radius: 8px;
-  font-size: 0.82rem; color: #276749; margin-bottom: 12px;
+  padding: 10px 14px; background: #0d1f14; border-radius: 10px;
+  font-size: 0.82rem; color: #4ade80; margin-bottom: 12px;
+  border: 1px solid #1a3a24;
 }
 
 /* Itinerary */
-.day-block { border-left: 3px solid #2c7be5; padding-left: 14px; margin-bottom: 18px; }
-.day-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.day-header h3 { font-size: 0.95rem; color: #2c7be5; }
+.day-block { border-left: 3px solid #e8526a; padding-left: 14px; margin-bottom: 18px; }
+.day-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.day-header h3 { font-size: 0.92rem; color: #e8526a; font-weight: 700; }
 .activity-item {
-  background: #f8fafc; border-radius: 8px; padding: 9px 12px;
-  margin-bottom: 7px; display: flex; align-items: flex-start; gap: 8px;
+  background: #1a1f30; border-radius: 12px; padding: 11px 13px;
+  margin-bottom: 8px; display: flex; align-items: flex-start; gap: 10px;
+  border: 1px solid #2a3040; transition: border-color 0.2s;
 }
-.activity-time { font-size: 0.78rem; color: #888; min-width: 44px; margin-top: 2px; }
+.activity-item:hover { border-color: #3a4560; }
+.activity-time { font-size: 0.78rem; color: #f6c90e; min-width: 44px; margin-top: 2px; font-weight: 700; }
 .activity-content { flex: 1; }
-.activity-title { font-weight: 600; font-size: 0.88rem; }
-.activity-note { font-size: 0.76rem; color: #888; margin-top: 2px; }
-.cat-badge {
-  font-size: 0.68rem; padding: 2px 7px; border-radius: 20px; margin-left: 5px; font-weight: 500;
+.activity-title { font-weight: 600; font-size: 0.9rem; color: #f0f2f7; }
+.activity-note { font-size: 0.76rem; color: #6b7a8d; margin-top: 3px; }
+.activity-location { font-size: 0.76rem; color: #4ade80; margin-top: 3px; }
+.cat-badge { font-size: 0.68rem; padding: 2px 9px; border-radius: 20px; margin-left: 6px; font-weight: 600; }
+.btn-nav {
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  color: white; font-size: 0.78rem; padding: 5px 11px; border-radius: 12px;
 }
-.activity-location { font-size: 0.76rem; color: #4a9e6b; margin-top: 2px; }
-.btn-nav { background: #38a169; color: white; font-size: 0.8rem; padding: 5px 10px; }
-.cat-transport { background: #bee3f8; color: #2b6cb0; }
-.cat-hotel { background: #fefcbf; color: #744210; }
-.cat-food { background: #fed7d7; color: #9b2335; }
-.cat-attraction { background: #c6f6d5; color: #22543d; }
-.cat-shopping { background: #e9d8fd; color: #553c9a; }
-.cat-other { background: #e2e8f0; color: #4a5568; }
+.cat-transport { background: #1a1a28; color: #f87171; border: 1px solid #3a2030; }
+.cat-hotel    { background: #1a1a10; color: #fcd34d; border: 1px solid #3a3010; }
+.cat-food     { background: #0d1f14; color: #4ade80; border: 1px solid #1a3a24; }
+.cat-attraction{ background: #1a1028; color: #c084fc; border: 1px solid #3a2050; }
+.cat-shopping { background: #0d1a28; color: #60a5fa; border: 1px solid #1a3050; }
+.cat-other    { background: #1a1a1a; color: #9ca3af; border: 1px solid #2a2a2a; }
 
 /* Expense summary */
-.exp-summary-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;
-}
-.summary-box {
-  color: white; padding: 14px; border-radius: 10px; text-align: center;
-}
-.summary-box.blue { background: linear-gradient(135deg,#2c7be5,#4db6ac); }
-.summary-box.orange { background: linear-gradient(135deg,#ed8936,#f6ad55); }
-.summary-box.green { background: linear-gradient(135deg,#48bb78,#68d391); }
+.exp-summary-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 14px; }
+.summary-box { padding: 14px; border-radius: 14px; text-align: center; }
+.summary-box.blue   { background: linear-gradient(135deg, #1d4ed8, #3b82f6); color: white; }
+.summary-box.orange { background: linear-gradient(135deg, #c2410c, #f97316); color: white; }
+.summary-box.green  { background: linear-gradient(135deg, #15803d, #4ade80); color: #052e16; }
 .summary-label { font-size: 0.72rem; opacity: 0.85; }
-.summary-value { font-size: 1.3rem; font-weight: 700; margin-top: 3px; }
+.summary-value { font-size: 1.3rem; font-weight: 800; margin-top: 3px; }
 
 .expense-item {
   display: flex; align-items: center; gap: 8px;
-  padding: 9px 0; border-bottom: 1px solid #f0f0f0;
+  padding: 10px 0; border-bottom: 1px solid #1e2538;
 }
 .expense-item:last-child { border-bottom: none; }
 .exp-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .exp-info { flex: 1; min-width: 0; }
-.exp-title { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.exp-meta { font-size: 0.74rem; color: #888; }
-.exp-who { font-size: 0.7rem; background: #e9d8fd; color: #553c9a; padding: 1px 6px; border-radius: 10px; margin-left: 4px; }
-.exp-amount { font-weight: 700; font-size: 0.9rem; white-space: nowrap; }
-.receipt-thumb { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; cursor: pointer; border: 1px solid #e2e8f0; flex-shrink: 0; }
+.exp-title { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #e8ecf4; }
+.exp-meta { font-size: 0.74rem; color: #6b7a8d; }
+.exp-who { font-size: 0.7rem; background: #2a1a40; color: #c084fc; padding: 1px 6px; border-radius: 10px; margin-left: 4px; }
+.exp-amount { font-weight: 700; font-size: 0.9rem; white-space: nowrap; color: #f0f2f7; }
+.receipt-thumb { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; cursor: pointer; border: 1px solid #2a3040; flex-shrink: 0; }
 
 /* Budget bar */
 .budget-bar-wrap { margin-top: 6px; }
-.budget-labels { display: flex; justify-content: space-between; font-size: 0.76rem; color: #888; margin-bottom: 4px; }
-.budget-track { height: 8px; background: #e2e8f0; border-radius: 5px; overflow: hidden; }
-.budget-fill { height: 100%; border-radius: 5px; background: #48bb78; transition: width 0.4s; }
-.budget-fill.warn { background: #ed8936; }
-.budget-fill.over { background: #e53e3e; }
+.budget-labels { display: flex; justify-content: space-between; font-size: 0.76rem; color: #6b7a8d; margin-bottom: 5px; }
+.budget-track { height: 8px; background: #1e2538; border-radius: 5px; overflow: hidden; }
+.budget-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg,#22c55e,#4ade80); transition: width 0.5s; }
+.budget-fill.warn { background: linear-gradient(90deg,#f97316,#fb923c); }
+.budget-fill.over { background: linear-gradient(90deg,#e8526a,#f87171); }
 
 /* Photo scan */
 .photo-scan-wrap {
-  border: 2px dashed #b794f4; border-radius: 10px;
-  padding: 14px; background: #faf5ff; margin-bottom: 12px;
+  border: 2px dashed #3a2a50; border-radius: 12px;
+  padding: 14px; background: #110d1c; margin-bottom: 12px;
 }
-.photo-scan-wrap h3 { font-size: 0.88rem; color: #6b46c1; margin-bottom: 10px; }
+.photo-scan-wrap h3 { font-size: 0.88rem; color: #c084fc; margin-bottom: 10px; }
 .photo-preview-box { position: relative; display: inline-block; margin-bottom: 10px; }
-.photo-preview-box img { max-width: 100%; max-height: 180px; border-radius: 8px; display: block; border: 1px solid #e9d8fd; }
+.photo-preview-box img { max-width: 100%; max-height: 180px; border-radius: 10px; display: block; border: 1px solid #3a2a50; }
 .remove-photo-btn {
-  position: absolute; top: -8px; right: -8px; background: #e53e3e; color: white;
+  position: absolute; top: -8px; right: -8px; background: #f87171; color: white;
   border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer;
   font-size: 0.78rem; display: flex; align-items: center; justify-content: center;
 }
-#scanStatus { font-size: 0.82rem; color: #6b46c1; padding: 6px 10px; background: #f3e8ff; border-radius: 7px; display: none; margin-top: 8px; }
-#scanStatus.error { background: #fff5f5; color: #e53e3e; }
+#scanStatus { font-size: 0.82rem; color: #c084fc; padding: 7px 11px; background: #1a1028; border-radius: 8px; display: none; margin-top: 8px; border: 1px solid #3a2050; }
+#scanStatus.error { background: #1a0a10; color: #f87171; border-color: #3a1a28; }
 
 .scan-item {
   display: flex; align-items: center; gap: 7px;
-  padding: 7px 9px; background: white; border-radius: 8px;
-  border: 1.5px solid #e9d8fd; margin-bottom: 5px;
+  padding: 8px 10px; background: #1a1f30; border-radius: 10px;
+  border: 1px solid #3a2a50; margin-bottom: 6px;
 }
-.scan-item input[type=checkbox] { width: 15px; height: 15px; accent-color: #6b46c1; flex-shrink: 0; }
+.scan-item input[type=checkbox] { width: 15px; height: 15px; accent-color: #a855f7; flex-shrink: 0; }
 .scan-item-info { flex: 1; min-width: 0; }
 .scan-item-name { font-size: 0.85rem; font-weight: 500; }
-.scan-item-orig { font-size: 0.72rem; color: #888; }
+.scan-item-orig { font-size: 0.72rem; color: #6b7a8d; }
 .scan-item-controls { display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
 
 /* Chart */
-.chart-bars { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
-.chart-row { display: flex; align-items: center; gap: 7px; }
-.chart-label { font-size: 0.76rem; width: 56px; text-align: right; color: #555; }
-.chart-bar-bg { flex: 1; background: #eef0f3; border-radius: 4px; height: 16px; overflow: hidden; }
-.chart-bar { height: 100%; border-radius: 4px; transition: width 0.4s; }
-.chart-val { font-size: 0.74rem; color: #555; width: 56px; }
+.chart-bars { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.chart-row { display: flex; align-items: center; gap: 8px; }
+.chart-label { font-size: 0.76rem; width: 56px; text-align: right; color: #8892a4; }
+.chart-bar-bg { flex: 1; background: #1e2538; border-radius: 5px; height: 16px; overflow: hidden; }
+.chart-bar { height: 100%; border-radius: 5px; transition: width 0.5s; }
+.chart-val { font-size: 0.74rem; color: #8892a4; width: 60px; }
 
 /* Modal */
 .modal-overlay {
   display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(0,0,0,0.72); z-index: 200; align-items: center; justify-content: center; padding: 16px;
+  backdrop-filter: blur(4px);
 }
 .modal-overlay.open { display: flex; }
 .modal {
-  background: white; border-radius: 14px; padding: 22px;
+  background: #141824; border-radius: 18px; padding: 24px;
   width: 100%; max-width: 460px; max-height: 92vh; overflow-y: auto;
+  border: 1px solid #2a3040; box-shadow: 0 24px 64px rgba(0,0,0,0.6);
 }
-.modal h3 { margin-bottom: 14px; color: #2c7be5; }
-.modal-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+.modal h3 { margin-bottom: 16px; color: #e8526a; font-size: 1.05rem; }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
 
-.empty { text-align: center; color: #aaa; padding: 24px; font-size: 0.88rem; }
-.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #d8b4fe; border-top-color: #6b46c1; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
+.empty { text-align: center; color: #3a4560; padding: 28px; font-size: 0.88rem; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #3a2a50; border-top-color: #a855f7; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
-  background: #1a202c; color: white; padding: 10px 20px; border-radius: 20px;
-  font-size: 0.88rem; z-index: 999; transition: transform 0.3s; pointer-events: none;
+  background: #1e2538; color: #f0f2f7; padding: 10px 22px; border-radius: 20px;
+  font-size: 0.88rem; z-index: 999; transition: transform 0.3s cubic-bezier(.34,1.56,.64,1); pointer-events: none;
+  border: 1px solid #3a4560; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
 
-.api-note { font-size: 0.74rem; color: #888; margin-top: 3px; line-height: 1.5; }
-.api-note a { color: #2c7be5; }
+.api-note { font-size: 0.74rem; color: #6b7a8d; margin-top: 4px; line-height: 1.5; }
+.api-note a { color: #e8526a; }
+
+/* Map */
+#mapContainer { height: 420px; border-radius: 12px; overflow: hidden; border: 1px solid #2a3040; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: #8892a4; }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.map-info-bar { font-size: 0.8rem; color: #6b7a8d; margin-bottom: 10px; min-height: 18px; }
+
+.leaflet-popup-content-wrapper { background: #1e2538 !important; color: #e8ecf4 !important; border: 1px solid #3a4560 !important; border-radius: 12px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important; }
+.leaflet-popup-tip { background: #1e2538 !important; }
+.leaflet-popup-close-button { color: #8892a4 !important; }
+
+/* Edit button */
+.btn-edit { background: #1e2538; color: #8892a4; border: 1px solid #2a3040; font-size: 0.75rem; padding: 4px 9px; border-radius: 10px; }
+.btn-edit:hover { background: #252d45; color: #e8ecf4; opacity: 1; transform: none; }
+
+/* Translate result panel */
+.translate-result {
+  margin-top: 6px; padding: 6px 10px; background: #1a1028; border: 1px solid #3a2050;
+  border-radius: 8px; font-size: 0.76rem; color: #c084fc; display: flex; align-items: center; gap: 8px;
+}
+.copy-translated {
+  cursor: pointer; font-size: 0.68rem; padding: 2px 7px; flex-shrink: 0;
+  background: #3a2050; border-radius: 6px; color: #e9d5ff; white-space: nowrap;
+}
+.copy-translated:hover { background: #5a3080; }
+
+/* Budget page */
+.budget-overview { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 4px; }
+.budget-overview-box { background: #1a1f30; border-radius: 12px; padding: 14px; border: 1px solid #2a3040; text-align: center; }
+.budget-overview-label { font-size: 0.74rem; color: #8892a4; }
+.budget-overview-value { font-size: 1.2rem; font-weight: 800; margin-top: 4px; color: #f0f2f7; }
+.budget-overview-value.pink { color: #e8526a; }
+.budget-overview-value.green { color: #4ade80; }
+.budget-cat-item { padding: 14px; background: #1a1f30; border-radius: 12px; border: 1px solid #2a3040; margin-bottom: 10px; }
+.budget-cat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.budget-cat-name { font-size: 0.9rem; font-weight: 600; color: #e8ecf4; }
+.budget-cat-amounts { display: flex; gap: 14px; font-size: 0.78rem; color: #8892a4; margin-bottom: 8px; flex-wrap: wrap; }
+.budget-cat-amounts span b { color: #e8ecf4; }
+.budget-cat-input { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.budget-cat-input label { font-size: 0.78rem; color: #8892a4; margin-bottom: 0; white-space: nowrap; }
+.budget-cat-input input { width: 120px; padding: 5px 8px; font-size: 0.82rem; }
+.budget-pct-badge { font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+
+/* Weather */
+.weather-badge { display:inline-flex; align-items:center; gap:4px; font-size:0.75rem; padding:2px 9px; background:#1a1f30; border:1px solid #2a3040; border-radius:10px; color:#8892a4; margin-left:8px; vertical-align:middle; }
+.weather-badge .temp { color:#f6c90e; font-weight:700; }
+
+/* Flights */
+.flight-card { background:#1a1f30; border-radius:14px; padding:16px; margin-bottom:10px; border:1px solid #2a3040; }
+.flight-route { display:flex; align-items:center; gap:8px; margin:10px 0; }
+.flight-airport { text-align:center; min-width:60px; }
+.flight-airport-code { font-size:1.4rem; font-weight:800; color:#f0f2f7; letter-spacing:1px; }
+.flight-airport-city { font-size:0.7rem; color:#8892a4; margin-top:1px; }
+.flight-airport-time { font-size:0.8rem; color:#f6c90e; font-weight:700; margin-top:4px; }
+.flight-route-mid { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
+.flight-arrow-line { color:#e8526a; font-size:1.2rem; letter-spacing:-3px; }
+.flight-duration { font-size:0.72rem; color:#8892a4; }
+
+/* Checklist */
+.checklist-cat-section { margin-bottom:16px; }
+.checklist-cat-title { font-size:0.84rem; font-weight:700; color:#e8526a; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #2a3040; display:flex; align-items:center; gap:6px; }
+.checklist-item { display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid #1a1f30; transition:opacity 0.2s; }
+.checklist-item:last-child { border-bottom:none; }
+.checklist-item input[type=checkbox] { width:17px; height:17px; accent-color:#e8526a; flex-shrink:0; cursor:pointer; }
+.checklist-item label { font-size:0.88rem; color:#e8ecf4; cursor:pointer; flex:1; line-height:1.4; }
+.checklist-item.done label { text-decoration:line-through; color:#3a4560; }
+.checklist-add-row { display:flex; gap:8px; margin-top:10px; }
+
+/* Attraction info modal */
+.attr-photo { width:100%; height:200px; object-fit:cover; border-radius:12px; margin-bottom:14px; display:block; }
+.attr-photo-placeholder { width:100%; height:140px; background:linear-gradient(135deg,#1a1028,#1e2538); border-radius:12px; margin-bottom:14px; display:flex; align-items:center; justify-content:center; font-size:2.5rem; color:#3a4560; }
+.attr-title { font-size:1.1rem; font-weight:800; color:#f0f2f7; margin-bottom:6px; }
+.attr-extract { font-size:0.84rem; color:#8892a4; line-height:1.7; margin-bottom:14px; max-height:140px; overflow-y:auto; }
+.attr-links { display:flex; gap:8px; flex-wrap:wrap; }
+.btn-info-link { display:inline-flex; align-items:center; gap:5px; padding:7px 14px; border-radius:14px; font-size:0.82rem; font-weight:600; text-decoration:none; cursor:pointer; border:none; }
+.btn-gmap { background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white; }
+.btn-wiki { background:#1e2538; color:#8892a4; border:1px solid #2a3040; }
+.btn-wiki:hover { color:#e8ecf4; }
+.attr-loading { text-align:center; padding:32px; color:#6b7a8d; font-size:0.88rem; }
+.attr-info-btn { display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-size:0.68rem; padding:2px 8px; border-radius:8px; background:#1a1028; color:#c084fc; border:1px solid #3a2050; margin-top:4px; white-space:nowrap; }
 
 @media (max-width: 600px) {
   .form-row { flex-direction: column; }
   .exp-summary-grid { grid-template-columns: repeat(3,1fr); gap: 6px; }
-  .summary-value { font-size: 1.1rem; }
-  nav button { padding: 11px 10px; font-size: 0.82rem; }
-}
-</style>
+  .summary-value { font-size: 1.05rem; }
+  nav button { padding: 7px 12px; font-size: 0.8rem; }
+  #mapContainer { height: 320px; }
+}</style>
 </head>
 <body>
 
@@ -241,7 +338,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #2c7be5
     <div class="home-title">旅遊規劃助手</div>
     <div class="home-subtitle">行程規劃 × 多人即時消費記帳</div>
 
-    <div id="firebaseWarning" style="display:none;background:#fff5f5;border:1px solid #fed7d7;border-radius:8px;padding:12px;font-size:0.82rem;color:#c53030;margin-bottom:16px;line-height:1.6">
+    <div id="firebaseWarning" style="display:none;background:#1a0d0d;border:1px solid #3a1a1a;border-radius:10px;padding:12px;font-size:0.82rem;color:#f87171;margin-bottom:16px;line-height:1.6">
       ⚠️ 尚未設定 Firebase，請參考頁面底部說明填入設定後重新部署。
     </div>
 
@@ -255,9 +352,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #2c7be5
         maxlength="6" oninput="this.value=this.value.toUpperCase()">
       <button class="btn btn-success" onclick="joinTrip()" style="white-space:nowrap">加入旅程</button>
     </div>
-    <div id="homeError" style="font-size:0.8rem;color:#e53e3e;margin-top:6px;display:none"></div>
+    <div id="homeError" style="font-size:0.8rem;color:#f87171;margin-top:6px;display:none"></div>
 
-    <div style="margin-top:20px;font-size:0.75rem;color:#aaa;text-align:center;line-height:1.6">
+    <div style="margin-top:20px;font-size:0.75rem;color:#4a5568;text-align:center;line-height:1.6">
       建立者與旅伴使用同一代碼，資料即時同步<br>
       資料儲存於 Firebase，不受裝置限制
     </div>
@@ -283,8 +380,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #2c7be5
     <button class="active" onclick="showPage('itinerary',this)">📅 行程</button>
     <button onclick="showPage('expense',this)">💰 消費</button>
     <button onclick="showPage('summary',this)">📊 總覽</button>
+    <button onclick="showPage('map',this)">🗺️ 地圖</button>
+    <button onclick="showPage('budget',this)">💼 預算</button>
+    <button onclick="showPage('flights',this)">✈️ 航班</button>
+    <button onclick="showPage('checklist',this)">✅ 清單</button>
     <button onclick="openModal('settingsModal')" style="margin-left:auto">⚙️</button>
-    <button onclick="leaveTrip()" style="color:#e53e3e">🚪</button>
+    <button onclick="leaveTrip()" style="color:#f87171">🚪</button>
   </nav>
 
   <main>
@@ -377,7 +478,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #2c7be5
           </div>
           <div id="scanStatus"></div>
           <div id="scanResults" style="display:none;margin-top:10px">
-            <div style="font-size:0.82rem;color:#6b46c1;font-weight:600;margin-bottom:6px">辨識結果（勾選要新增的項目）：</div>
+            <div style="font-size:0.82rem;color:#c084fc;font-weight:600;margin-bottom:6px">辨識結果（勾選要新增的項目）：</div>
             <div id="scanItemsList"></div>
             <div style="display:flex;gap:7px;margin-top:8px;flex-wrap:wrap">
               <button class="btn btn-purple" onclick="addCheckedItems()">＋ 新增勾選項目</button>
@@ -446,11 +547,74 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #2c7be5
       </div>
     </div>
 
+    <!-- 預算 -->
+    <div id="budget" class="page">
+      <div class="card">
+        <h2>💼 整體預算概覽</h2>
+        <div class="budget-overview" id="budgetOverview"></div>
+        <div style="margin-top:12px">
+          <div class="budget-bar-wrap">
+            <div class="budget-labels">
+              <span id="budgetOverviewUsed">已花費 $0</span>
+              <span id="budgetOverviewTotal">總預算未設定</span>
+            </div>
+            <div class="budget-track"><div class="budget-fill" id="budgetOverviewFill" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>📂 各類別預算設定</h2>
+        <p style="font-size:0.78rem;color:#6b7a8d;margin-bottom:14px">為每個消費類別設定預算上限，即時追蹤花費狀況</p>
+        <div id="budgetCatGrid"></div>
+      </div>
+    </div>
+
+    <!-- 航班 -->
+    <div id="flights" class="page">
+      <div class="card">
+        <h2>✈️ 航班資訊</h2>
+        <button class="btn btn-primary" onclick="openModal('addFlightModal')" style="margin-bottom:14px;width:100%">＋ 新增航班</button>
+        <div id="flightList"><div class="empty">尚未新增航班，點擊上方按鈕新增</div></div>
+      </div>
+    </div>
+
+    <!-- 清單 -->
+    <div id="checklist" class="page">
+      <div class="card">
+        <h2>✅ 行前打包清單</h2>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="flex:1;font-size:0.82rem;color:#8892a4" id="checklistProgress">計算中...</div>
+          <button class="btn btn-ghost" style="font-size:0.75rem;padding:4px 12px" onclick="resetChecklist()">重置</button>
+        </div>
+        <div class="budget-track" style="margin-bottom:16px">
+          <div class="budget-fill" id="checklistBar" style="width:0%"></div>
+        </div>
+        <div id="checklistBody"></div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #2a3040">
+          <div style="font-size:0.84rem;color:#e8526a;font-weight:700;margin-bottom:8px">＋ 新增自訂項目</div>
+          <div class="checklist-add-row">
+            <input type="text" id="customItemInput" placeholder="例：防蚊液、帽子..." style="flex:1">
+            <button class="btn btn-primary" style="padding:8px 16px" onclick="addCustomItem()">新增</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 地圖 -->
+    <div id="map" class="page">
+      <div class="card">
+        <h2>🗺️ 行程地圖</h2>
+        <div class="map-info-bar" id="mapStatus">切換至此頁以載入地圖</div>
+        <div id="mapContainer"></div>
+        <div class="map-legend" id="mapLegend"></div>
+      </div>
+    </div>
+
     <!-- 總覽 -->
     <div id="summary" class="page">
       <div class="card">
         <h2>旅程資訊</h2>
-        <div id="summaryTripInfo" style="font-size:0.88rem;color:#555;line-height:1.9"></div>
+        <div id="summaryTripInfo" style="font-size:0.88rem;color:#8892a4;line-height:1.9"></div>
       </div>
       <div class="card">
         <h2>各類別消費分析</h2>
@@ -495,6 +659,201 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #2c7be5
   </div>
 </div>
 
+<!-- Edit Expense -->
+<div class="modal-overlay" id="editExpenseModal">
+  <div class="modal">
+    <h3>✏️ 編輯消費紀錄</h3>
+    <input type="hidden" id="editExpId">
+    <div class="form-row">
+      <div class="form-group"><label>日期</label><input type="date" id="editExpDate"></div>
+      <div class="form-group">
+        <label>類別</label>
+        <select id="editExpCat">
+          <option value="transport">🚌 交通</option>
+          <option value="hotel">🏨 住宿</option>
+          <option value="food">🍜 餐飲</option>
+          <option value="attraction">🏛 景點</option>
+          <option value="shopping">🛍 購物</option>
+          <option value="other">📌 其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>貨幣</label>
+        <select id="editExpCurrency">
+          <option value="TWD">TWD 台幣</option>
+          <option value="JPY">JPY 日幣</option>
+          <option value="USD">USD 美元</option>
+          <option value="EUR">EUR 歐元</option>
+          <option value="KRW">KRW 韓元</option>
+          <option value="HKD">HKD 港幣</option>
+          <option value="CNY">CNY 人民幣</option>
+          <option value="THB">THB 泰銖</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2"><label>項目名稱</label><input type="text" id="editExpTitle" placeholder="例：拉麵午餐"></div>
+      <div class="form-group"><label>金額</label><input type="number" id="editExpAmount" placeholder="0" min="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2"><label>備註</label><input type="text" id="editExpNote" placeholder="（選填）"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('editExpenseModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveEditExpense()">儲存變更</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Flight -->
+<div class="modal-overlay" id="editFlightModal">
+  <div class="modal">
+    <h3>✏️ 編輯航班</h3>
+    <input type="hidden" id="editFlightId">
+    <div class="form-row">
+      <div class="form-group">
+        <label>航班號碼</label>
+        <input type="text" id="editFlightNo" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div class="form-group">
+        <label>類型</label>
+        <select id="editFlightType">
+          <option value="outbound">🛫 去程</option>
+          <option value="return">🛬 回程</option>
+          <option value="transfer">🔄 轉機</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>出發機場</label><input type="text" id="editFlightDep" maxlength="4" oninput="this.value=this.value.toUpperCase()"></div>
+      <div class="form-group"><label>出發時間</label><input type="datetime-local" id="editFlightDepTime"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>抵達機場</label><input type="text" id="editFlightArr" maxlength="4" oninput="this.value=this.value.toUpperCase()"></div>
+      <div class="form-group"><label>抵達時間</label><input type="datetime-local" id="editFlightArrTime"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2"><label>備註</label><input type="text" id="editFlightNote" placeholder="訂位代號、行李規定…"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('editFlightModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveEditFlight()">儲存變更</button>
+    </div>
+  </div>
+</div>
+
+<!-- Attraction Info -->
+<div class="modal-overlay" id="attractionModal">
+  <div class="modal" style="max-width:500px">
+    <div id="attractionContent"><div class="attr-loading">🔍 搜尋景點資訊中...</div></div>
+    <div class="modal-actions" style="margin-top:10px">
+      <button class="btn btn-ghost" onclick="closeModal('attractionModal')">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Flight -->
+<div class="modal-overlay" id="addFlightModal">
+  <div class="modal">
+    <h3>✈️ 新增航班</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>航班號碼</label>
+        <input type="text" id="flightNo" placeholder="例：BR852" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div class="form-group">
+        <label>類型</label>
+        <select id="flightType">
+          <option value="outbound">🛫 去程</option>
+          <option value="return">🛬 回程</option>
+          <option value="transfer">🔄 轉機</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>出發機場代號</label>
+        <input type="text" id="flightDep" placeholder="例：TPE" maxlength="4" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div class="form-group">
+        <label>出發時間</label>
+        <input type="datetime-local" id="flightDepTime">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>抵達機場代號</label>
+        <input type="text" id="flightArr" placeholder="例：NRT" maxlength="4" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div class="form-group">
+        <label>抵達時間</label>
+        <input type="datetime-local" id="flightArrTime">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>備註（訂位代號、行李規定…）</label>
+        <input type="text" id="flightNote" placeholder="例：訂位代號 ABC123，23kg 托運">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('addFlightModal')">取消</button>
+      <button class="btn btn-primary" onclick="addFlight()">＋ 新增航班</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Activity -->
+<div class="modal-overlay" id="editActivityModal">
+  <div class="modal">
+    <h3>✏️ 編輯活動</h3>
+    <input type="hidden" id="editActId">
+    <div class="form-row">
+      <div class="form-group">
+        <label>日期</label>
+        <input type="date" id="editActDate">
+      </div>
+      <div class="form-group">
+        <label>時間</label>
+        <input type="time" id="editActTime">
+      </div>
+      <div class="form-group">
+        <label>類別</label>
+        <select id="editActCat">
+          <option value="transport">🚌 交通</option>
+          <option value="hotel">🏨 住宿</option>
+          <option value="food">🍜 餐飲</option>
+          <option value="attraction">🏛 景點</option>
+          <option value="shopping">🛍 購物</option>
+          <option value="other">📌 其他</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>活動名稱</label>
+        <input type="text" id="editActTitle" placeholder="例：搭乘新幹線到大阪">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>📍 地點</label>
+        <input type="text" id="editActLocation" placeholder="例：大阪城公園">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>備註</label>
+        <input type="text" id="editActNote" placeholder="例：車票已預訂...">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('editActivityModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveEditActivity()">儲存變更</button>
+    </div>
+  </div>
+</div>
+
 <!-- Receipt image -->
 <div class="modal-overlay" id="receiptModal">
   <div class="modal" style="max-width:600px;padding:12px">
@@ -509,7 +868,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #2c7be5
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import {
-  getFirestore, collection, doc, addDoc, deleteDoc,
+  getFirestore, collection, doc, addDoc, deleteDoc, updateDoc,
   onSnapshot, setDoc, getDoc, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
@@ -530,9 +889,10 @@ const CAT_COLORS = { transport:'#4299e1', hotel:'#ecc94b', food:'#fc8181', attra
 const CAT_LABELS = { transport:'交通', hotel:'住宿', food:'餐飲', attraction:'景點', shopping:'購物', other:'其他' };
 
 let db, tripId;
-let tripData = null, activities = [], expenses = [];
+let tripData = null, activities = [], expenses = [], flights = [];
 let unsubscribers = [];
 let scanItems = [], photoBase64 = null, photoMediaType = 'image/jpeg';
+let weatherData = null;
 
 // ---- Firebase init ----
 const isConfigured = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId;
@@ -597,9 +957,12 @@ function setupListeners() {
       if (!snap.exists()) return;
       tripData = snap.data();
       setSyncStatus(true);
+      if (!weatherData) fetchWeather();
       renderHeader();
       renderSummary();
       renderExpenses();
+      if (document.getElementById('budget').classList.contains('active')) renderBudget();
+      if (document.getElementById('checklist').classList.contains('active')) renderChecklist();
     }, () => setSyncStatus(false))
   );
   unsubscribers.push(
@@ -613,6 +976,13 @@ function setupListeners() {
       expenses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderExpenses();
       renderSummary();
+      if (document.getElementById('budget').classList.contains('active')) renderBudget();
+    })
+  );
+  unsubscribers.push(
+    onSnapshot(collection(db, 'trips', tripId, 'flights'), snap => {
+      flights = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (document.getElementById('flights').classList.contains('active')) renderFlights();
     })
   );
 }
@@ -672,6 +1042,10 @@ window.showPage = function(id, btn) {
   document.getElementById(id).classList.add('active');
   if (btn) btn.classList.add('active');
   if (id === 'summary') renderSummary();
+  if (id === 'map') renderMap();
+  if (id === 'budget') renderBudget();
+  if (id === 'flights') renderFlights();
+  if (id === 'checklist') renderChecklist();
 };
 
 // ---- Itinerary ----
@@ -714,20 +1088,31 @@ function renderItinerary() {
   el.innerHTML = Object.keys(byDay).sort().map(day => {
     dayIdx++;
     const label = day !== '未指定日期' ? `第${dayIdx}天 · ${fmtDate(day)}` : '未指定日期';
+    const wx = getWeatherForDate(day);
+    const wxBadge = wx ? `<span class="weather-badge">${wx.icon} <span class="temp">${wx.minC}°~${wx.maxC}°C</span> ${wx.desc}</span>` : '';
     const items = byDay[day].map(a => `
       <div class="activity-item">
         <div class="activity-time">${a.time||'--:--'}</div>
         <div class="activity-content">
           <div class="activity-title">${esc(a.title)}<span class="cat-badge cat-${a.cat}">${CAT_LABELS[a.cat]}</span></div>
-          ${a.location ? `<div class="activity-location">📍 ${esc(a.location)}</div>` : ''}
+          ${a.location ? `
+            <div class="activity-location" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px">
+              <span>📍 ${esc(a.location)}</span>
+              <span style="cursor:pointer;font-size:0.68rem;padding:1px 7px;border-radius:8px;background:#0d1f14;color:#4ade80;border:1px solid #1a3a24" onclick="copyLocation('${esc(a.location)}')">複製</span>
+              <span style="cursor:pointer;font-size:0.68rem;padding:1px 7px;border-radius:8px;background:#1a1028;color:#c084fc;border:1px solid #3a2050" onclick="translateLocation('${esc(a.id)}','${esc(a.location)}')">🌐 翻譯地址</span>
+            </div>
+            <div class="translate-result" id="trans-${a.id}" style="display:none"></div>
+          ` : ''}
           ${a.note ? `<div class="activity-note">${esc(a.note)}</div>` : ''}
+          ${a.title ? `<button class="attr-info-btn" onclick="fetchAttractionInfo('${esc(a.title)}','${esc(a.location||'')}')">🔍 景點資訊</button>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
           ${a.location ? `<button class="btn btn-nav" onclick="openNav('${esc(a.location)}')">🗺️ 導航</button>` : ''}
+          <button class="btn btn-edit" onclick="openEditActivity('${a.id}')">✏️ 編輯</button>
           <button class="btn btn-danger" onclick="deleteActivity('${a.id}')">刪除</button>
         </div>
       </div>`).join('');
-    return `<div class="card"><div class="day-block"><div class="day-header"><h3>${label}</h3></div>${items}</div></div>`;
+    return `<div class="card"><div class="day-block"><div class="day-header"><h3>${label}${wxBadge}</h3></div>${items}</div></div>`;
   }).join('');
 }
 
@@ -752,6 +1137,36 @@ window.addExpense = async function() {
 
 window.deleteExpense = async function(id) { await deleteDoc(doc(db, 'trips', tripId, 'expenses', id)); };
 window.viewReceipt = function(src) { document.getElementById('receiptFull').src = src; openModal('receiptModal'); };
+
+window.openEditExpense = function(id) {
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('editExpId').value = id;
+  document.getElementById('editExpDate').value = e.date || '';
+  document.getElementById('editExpCat').value = e.cat || 'other';
+  document.getElementById('editExpCurrency').value = e.currency || 'TWD';
+  document.getElementById('editExpTitle').value = e.title || '';
+  document.getElementById('editExpAmount').value = e.amount || '';
+  document.getElementById('editExpNote').value = e.note || '';
+  openModal('editExpenseModal');
+};
+
+window.saveEditExpense = async function() {
+  const id = document.getElementById('editExpId').value;
+  const title = document.getElementById('editExpTitle').value.trim();
+  const amount = parseFloat(document.getElementById('editExpAmount').value);
+  if (!title) { showToast('請填寫項目名稱'); return; }
+  if (isNaN(amount) || amount <= 0) { showToast('請填寫正確金額'); return; }
+  await updateDoc(doc(db, 'trips', tripId, 'expenses', id), {
+    date: document.getElementById('editExpDate').value,
+    cat: document.getElementById('editExpCat').value,
+    currency: document.getElementById('editExpCurrency').value,
+    title, amount,
+    note: document.getElementById('editExpNote').value.trim(),
+  });
+  closeModal('editExpenseModal');
+  showToast('✅ 消費紀錄已更新');
+};
 
 function renderExpenses() {
   const total = expenses.reduce((s,e)=>s+e.amount,0);
@@ -786,6 +1201,7 @@ function renderExpenses() {
         <div class="exp-meta">${e.date||'—'} · ${CAT_LABELS[e.cat]}${e.note?` · ${esc(e.note)}`:''}</div>
       </div>
       <div class="exp-amount">${e.currency} ${e.amount.toLocaleString()}</div>
+      <button class="btn btn-ghost" onclick="openEditExpense('${e.id}')">✏️</button>
       <button class="btn btn-danger" onclick="deleteExpense('${e.id}')">刪除</button>
     </div>`).join('');
 }
@@ -949,6 +1365,667 @@ function compressImage(src, size=100, q=0.6) {
     };
     img.src = src;
   });
+}
+
+// ---- Weather ----
+async function fetchWeather() {
+  const dest = tripData?.dest;
+  if (!dest) return;
+  try {
+    const res = await fetch(`https://wttr.in/${encodeURIComponent(dest)}?format=j1`);
+    if (!res.ok) return;
+    const data = await res.json();
+    weatherData = data;
+    renderItinerary();
+  } catch(e) {}
+}
+
+function getWeatherForDate(dateStr) {
+  if (!weatherData || !dateStr) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const dayOffset = Math.round((new Date(dateStr) - new Date(today)) / 86400000);
+  if (dayOffset < 0 || dayOffset > 2) return null;
+  const w = weatherData.weather?.[dayOffset];
+  if (!w) return null;
+  const code = parseInt(w.hourly?.[4]?.weatherCode || '113');
+  return {
+    icon: weatherIcon(code),
+    desc: w.hourly?.[4]?.weatherDesc?.[0]?.value?.split(' ')[0] || '',
+    maxC: w.maxtempC,
+    minC: w.mintempC,
+  };
+}
+
+function weatherIcon(c) {
+  if (c === 113) return '☀️';
+  if (c === 116) return '⛅';
+  if (c === 119 || c === 122) return '☁️';
+  if (c >= 143 && c <= 185) return '🌫️';
+  if (c >= 200 && c <= 282) return '⛈️';
+  if (c >= 293 && c <= 374) return '🌧️';
+  if (c >= 375 && c <= 395) return '🌨️';
+  return '🌤️';
+}
+
+// ---- Flights ----
+window.addFlight = async function() {
+  const no = document.getElementById('flightNo').value.trim().toUpperCase();
+  if (!no) { showToast('請填寫航班號碼'); return; }
+  await addDoc(collection(db, 'trips', tripId, 'flights'), {
+    flightNo: no,
+    type: document.getElementById('flightType').value,
+    depAirport: document.getElementById('flightDep').value.trim().toUpperCase(),
+    arrAirport: document.getElementById('flightArr').value.trim().toUpperCase(),
+    depTime: document.getElementById('flightDepTime').value,
+    arrTime: document.getElementById('flightArrTime').value,
+    note: document.getElementById('flightNote').value.trim(),
+    createdAt: serverTimestamp(),
+  });
+  closeModal('addFlightModal');
+  showToast('✅ 航班已新增');
+  ['flightNo','flightDep','flightDepTime','flightArr','flightArrTime','flightNote'].forEach(id => document.getElementById(id).value = '');
+};
+
+window.deleteFlight = async function(id) {
+  await deleteDoc(doc(db, 'trips', tripId, 'flights', id));
+  showToast('已刪除航班');
+};
+
+window.openEditFlight = function(id) {
+  const f = flights.find(x => x.id === id);
+  if (!f) return;
+  document.getElementById('editFlightId').value = id;
+  document.getElementById('editFlightNo').value = f.flightNo || '';
+  document.getElementById('editFlightType').value = f.type || 'outbound';
+  document.getElementById('editFlightDep').value = f.depAirport || '';
+  document.getElementById('editFlightDepTime').value = f.depTime || '';
+  document.getElementById('editFlightArr').value = f.arrAirport || '';
+  document.getElementById('editFlightArrTime').value = f.arrTime || '';
+  document.getElementById('editFlightNote').value = f.note || '';
+  openModal('editFlightModal');
+};
+
+window.saveEditFlight = async function() {
+  const id = document.getElementById('editFlightId').value;
+  const no = document.getElementById('editFlightNo').value.trim().toUpperCase();
+  if (!no) { showToast('請填寫航班號碼'); return; }
+  await updateDoc(doc(db, 'trips', tripId, 'flights', id), {
+    flightNo: no,
+    type: document.getElementById('editFlightType').value,
+    depAirport: document.getElementById('editFlightDep').value.trim().toUpperCase(),
+    depTime: document.getElementById('editFlightDepTime').value,
+    arrAirport: document.getElementById('editFlightArr').value.trim().toUpperCase(),
+    arrTime: document.getElementById('editFlightArrTime').value,
+    note: document.getElementById('editFlightNote').value.trim(),
+  });
+  closeModal('editFlightModal');
+  showToast('✅ 航班已更新');
+};
+
+window.fetchAttractionInfo = async function(title, location) {
+  openModal('attractionModal');
+  const content = document.getElementById('attractionContent');
+  content.innerHTML = '<div class="attr-loading">🔍 搜尋景點資訊中...</div>';
+  try {
+    const query = encodeURIComponent(title);
+    const res = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${query}`);
+    if (!res.ok) throw new Error('not found');
+    const data = await res.json();
+    const img = data.thumbnail?.source
+      ? `<img class="attr-photo" src="${data.thumbnail.source}" alt="${esc(title)}" onerror="this.style.display='none'">`
+      : `<div class="attr-photo-placeholder">🏛</div>`;
+    const extract = data.extract || '暫無簡介資訊。';
+    const wikiUrl = data.content_urls?.desktop?.page || `https://zh.wikipedia.org/wiki/${query}`;
+    const gmapUrl = `https://www.google.com/maps/search/${encodeURIComponent(title + ' ' + (location||''))}`;
+    content.innerHTML = `
+      ${img}
+      <div class="attr-title">${esc(data.title || title)}</div>
+      <div class="attr-extract">${esc(extract)}</div>
+      <div class="attr-links">
+        <a class="btn-info-link btn-gmap" href="${gmapUrl}" target="_blank" rel="noopener">🗺️ Google Maps</a>
+        <a class="btn-info-link btn-wiki" href="${wikiUrl}" target="_blank" rel="noopener">📖 Wikipedia</a>
+      </div>`;
+  } catch(e) {
+    const gmapUrl = `https://www.google.com/maps/search/${encodeURIComponent(title + ' ' + (location||''))}`;
+    content.innerHTML = `
+      <div class="attr-photo-placeholder">🏛</div>
+      <div class="attr-title">${esc(title)}</div>
+      <div class="attr-extract" style="color:#6b7a8d">未找到 Wikipedia 資訊。可點擊下方按鈕搜尋。</div>
+      <div class="attr-links">
+        <a class="btn-info-link btn-gmap" href="${gmapUrl}" target="_blank" rel="noopener">🗺️ Google Maps</a>
+      </div>`;
+  }
+};
+
+// UTC offset (hours) for common IATA airport codes
+const AIRPORT_TZ = {
+  // Taiwan
+  TPE:8, TSA:8, RMQ:8, KHH:8, TNN:8, TTT:8,
+  // Japan
+  NRT:9, HND:9, KIX:9, ITM:9, FUK:9, CTS:9, OKA:9, NGO:9, HIJ:9, KMQ:9, SDJ:9,
+  // Korea
+  ICN:9, GMP:9, PUS:9, CJU:9,
+  // China
+  PEK:8, PKX:8, PVG:8, SHA:8, CAN:8, SZX:8, CTU:8, XIY:8, WUH:8, CSX:8, HGH:8,
+  // Hong Kong / Macao
+  HKG:8, MFM:8,
+  // Southeast Asia
+  BKK:7, DMK:7, CNX:7, HKT:7,  // Thailand UTC+7
+  SGN:7, HAN:7, DAD:7,           // Vietnam UTC+7
+  SIN:8,                          // Singapore UTC+8
+  KUL:8, PEN:8, BKI:8,          // Malaysia UTC+8
+  MNL:8, CEB:8,                  // Philippines UTC+8
+  CGK:7, DPS:8, SUB:7,          // Indonesia
+  RGN:6.5,                       // Myanmar UTC+6:30
+  PNH:7, REP:7,                  // Cambodia UTC+7
+  VTE:7,                         // Laos UTC+7
+  // South Asia
+  DEL:5.5, BOM:5.5, MAA:5.5, BLR:5.5, HYD:5.5, CCU:5.5, // India UTC+5:30
+  CMB:5.5,                       // Sri Lanka UTC+5:30
+  DAC:6,                         // Bangladesh UTC+6
+  KTM:5.75,                      // Nepal UTC+5:45
+  // Middle East
+  DXB:4, AUH:4, SHJ:4,          // UAE UTC+4
+  DOH:3,                         // Qatar UTC+3
+  RUH:3, JED:3,                  // Saudi Arabia UTC+3
+  AMM:3,                         // Jordan UTC+3
+  // Europe
+  LHR:0, LGW:0, STN:0, MAN:0, EDI:0,   // UK UTC+0
+  CDG:1, ORY:1, NCE:1,                   // France UTC+1
+  FRA:1, MUC:1, BER:1, DUS:1,           // Germany UTC+1
+  AMS:1,                                  // Netherlands UTC+1
+  FCO:1, MXP:1, VCE:1,                  // Italy UTC+1
+  MAD:1, BCN:1,                          // Spain UTC+1
+  ZRH:1, GVA:1,                          // Switzerland UTC+1
+  VIE:1,                                  // Austria UTC+1
+  BRU:1,                                  // Belgium UTC+1
+  CPH:1,                                  // Denmark UTC+1
+  ARN:1, GOT:1,                          // Sweden UTC+1
+  HEL:2,                                  // Finland UTC+2
+  ATH:2,                                  // Greece UTC+2
+  WAW:1,                                  // Poland UTC+1
+  PRG:1,                                  // Czech UTC+1
+  IST:3,                                  // Turkey UTC+3
+  // Americas
+  JFK:-5, LGA:-5, EWR:-5, BOS:-5, MIA:-5, IAD:-5, DCA:-5, PHL:-5, // US East UTC-5
+  ORD:-6, MDW:-6, MSP:-6, DTW:-5, IAH:-6, DAL:-6, DFW:-6,          // US Central UTC-6
+  DEN:-7, PHX:-7, SLC:-7,                                            // US Mountain UTC-7
+  LAX:-8, SFO:-8, SEA:-8, SJC:-8, LAS:-8, SAN:-8, PDX:-8,          // US West UTC-8
+  ANC:-9,                                                             // Alaska UTC-9
+  HNL:-10,                                                            // Hawaii UTC-10
+  YYZ:-5, YOW:-5, YUL:-5,       // Canada East UTC-5
+  YVR:-8, YYC:-7,                // Canada West
+  MEX:-6,                        // Mexico City UTC-6
+  GRU:-3, GIG:-3, BSB:-3,       // Brazil UTC-3
+  EZE:-3,                        // Argentina UTC-3
+  BOG:-5,                        // Colombia UTC-5
+  SCL:-4,                        // Chile UTC-4 (standard)
+  LIM:-5,                        // Peru UTC-5
+  // Australia / Oceania
+  SYD:11, MEL:11, BNE:10, ADL:10.5, PER:8, DRW:9.5, CBR:11,
+  AKL:13, CHC:13,                // New Zealand UTC+13
+  // Africa
+  CAI:2,  // Egypt UTC+2
+  JNB:2, CPT:2, // South Africa UTC+2
+  NBO:3,  // Kenya UTC+3
+  ADD:3,  // Ethiopia UTC+3
+  LOS:1,  // Nigeria UTC+1
+  CMN:1,  // Morocco UTC+1
+};
+
+// Parse "YYYY-MM-DDTHH:MM" as airport local time → UTC ms
+function localToUTC(dtStr, tzOffset) {
+  const [date, time] = dtStr.split('T');
+  const [y, mo, d] = date.split('-').map(Number);
+  const [h, mi] = time.split(':').map(Number);
+  return Date.UTC(y, mo - 1, d, h, mi) - tzOffset * 3600000;
+}
+
+function flightDuration(dep, arr, depCode, arrCode) {
+  if (!dep || !arr) return '';
+  const depTz = AIRPORT_TZ[depCode?.toUpperCase()];
+  const arrTz = AIRPORT_TZ[arrCode?.toUpperCase()];
+  let diff;
+  if (depTz != null && arrTz != null) {
+    diff = localToUTC(arr, arrTz) - localToUTC(dep, depTz);
+  } else {
+    // Unknown airports: raw diff (may be inaccurate)
+    diff = new Date(arr) - new Date(dep);
+  }
+  if (diff <= 0) return '';
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const known = depTz != null && arrTz != null;
+  return `${h > 0 ? h + 'h' : ''}${m > 0 ? m + 'm' : ''}${known ? '' : ' *'}`;
+}
+
+function renderFlights() {
+  const el = document.getElementById('flightList');
+  if (!flights.length) { el.innerHTML = '<div class="empty">尚未新增航班，點擊上方按鈕新增</div>'; return; }
+  const sorted = [...flights].sort((a,b) => (a.depTime||'').localeCompare(b.depTime||''));
+  const typeLabel = { outbound:'🛫 去程', return:'🛬 回程', transfer:'🔄 轉機' };
+  el.innerHTML = sorted.map(f => {
+    const dur = flightDuration(f.depTime, f.arrTime, f.depAirport, f.arrAirport);
+    const depDT = f.depTime ? f.depTime.replace('T',' ').slice(0,16) : '——';
+    const arrDT = f.arrTime ? f.arrTime.replace('T',' ').slice(0,16) : '——';
+    return `
+      <div class="flight-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:0.78rem;color:#e8526a;font-weight:700">${typeLabel[f.type]||f.type}</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:0.82rem;background:#1e2538;color:#f6c90e;padding:3px 10px;border-radius:8px;border:1px solid #3a4560;font-weight:800;letter-spacing:1px">${f.flightNo}</span>
+            <button class="btn btn-ghost" onclick="openEditFlight('${f.id}')">✏️</button>
+            <button class="btn btn-danger" onclick="deleteFlight('${f.id}')">刪除</button>
+          </div>
+        </div>
+        <div class="flight-route">
+          <div class="flight-airport">
+            <div class="flight-airport-code">${f.depAirport||'???'}</div>
+            <div class="flight-airport-time">${depDT}</div>
+          </div>
+          <div class="flight-route-mid">
+            <div class="flight-arrow-line">─── ✈ ───</div>
+            ${dur ? `<div class="flight-duration">飛行 ${dur}</div>` : ''}
+          </div>
+          <div class="flight-airport">
+            <div class="flight-airport-code">${f.arrAirport||'???'}</div>
+            <div class="flight-airport-time">${arrDT}</div>
+          </div>
+        </div>
+        ${f.note ? `<div style="font-size:0.78rem;color:#8892a4;padding-top:8px;border-top:1px solid #2a3040;margin-top:4px">📌 ${esc(f.note)}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+// ---- Checklist ----
+const CL_CATS = {
+  '🪪 證件 & 金融': ['護照','簽證','機票/車票 QR 碼','信用卡','現金','旅遊保險單'],
+  '👕 衣物': ['上衣','褲子/裙子','內衣褲','睡衣','外套','雨衣/雨傘','泳衣'],
+  '📱 3C 電子': ['手機','充電器','行動電源','國際電源轉接頭','相機','耳機'],
+  '🧴 盥洗用品': ['牙刷牙膏','洗髮精/沐浴乳','護膚品/乳液','防曬乳','刮鬍刀'],
+  '💊 藥品急救': ['常備藥','胃腸藥','暈車藥','感冒藥','OK繃','酒精棉片'],
+  '📄 旅遊文件': ['訂房確認信','景點門票','旅遊計畫','緊急聯絡電話'],
+};
+
+window.toggleCheckItem = async function(key, checked) {
+  await setDoc(doc(db, 'trips', tripId), { checklist: { [key]: checked } }, { merge: true });
+  if (tripData) { if (!tripData.checklist) tripData.checklist = {}; tripData.checklist[key] = checked; }
+  updateChecklistProgress();
+  const item = document.querySelector(`[data-ck="${CSS.escape(key)}"]`);
+  if (item) item.classList.toggle('done', checked);
+};
+
+window.resetChecklist = async function() {
+  if (!confirm('確定重置所有清單？')) return;
+  await setDoc(doc(db, 'trips', tripId), { checklist: {} }, { merge: true });
+  showToast('清單已重置');
+};
+
+window.addCustomItem = async function() {
+  const val = document.getElementById('customItemInput').value.trim();
+  if (!val) { showToast('請填寫項目名稱'); return; }
+  const cur = tripData?.customItems || [];
+  await setDoc(doc(db, 'trips', tripId), { customItems: [...cur, val] }, { merge: true });
+  document.getElementById('customItemInput').value = '';
+  showToast('✅ 已新增自訂項目');
+};
+
+window.deleteCustomItem = async function(idx) {
+  const cur = [...(tripData?.customItems || [])];
+  cur.splice(idx, 1);
+  await setDoc(doc(db, 'trips', tripId), { customItems: cur }, { merge: true });
+};
+
+function renderChecklist() {
+  if (!tripData) return;
+  const state = tripData.checklist || {};
+  const custom = tripData.customItems || [];
+  let html = '';
+  for (const [cat, items] of Object.entries(CL_CATS)) {
+    const done = items.filter(i => state[`${cat}/${i}`]).length;
+    html += `<div class="checklist-cat-section">
+      <div class="checklist-cat-title">${cat} <span style="font-size:0.72rem;color:#8892a4;font-weight:400">${done}/${items.length}</span></div>`;
+    items.forEach(item => {
+      const key = `${cat}/${item}`;
+      const chk = state[key] || false;
+      const safeKey = key.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      html += `<div class="checklist-item ${chk?'done':''}" data-ck="${key.replace(/"/g,'&quot;')}">
+        <input type="checkbox" ${chk?'checked':''} onchange="toggleCheckItem('${safeKey}',this.checked)">
+        <label onclick="this.previousElementSibling.click()">${item}</label>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  if (custom.length) {
+    html += `<div class="checklist-cat-section"><div class="checklist-cat-title">⭐ 自訂項目</div>`;
+    custom.forEach((item, i) => {
+      const key = `custom/${i}`;
+      const chk = state[key] || false;
+      html += `<div class="checklist-item ${chk?'done':''}" data-ck="custom/${i}">
+        <input type="checkbox" ${chk?'checked':''} onchange="toggleCheckItem('custom/${i}',this.checked)">
+        <label onclick="this.previousElementSibling.click()">${esc(item)}</label>
+        <span onclick="deleteCustomItem(${i})" style="color:#f87171;cursor:pointer;font-size:0.82rem;padding:0 4px;flex-shrink:0">✕</span>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  document.getElementById('checklistBody').innerHTML = html;
+  updateChecklistProgress();
+}
+
+function updateChecklistProgress() {
+  const state = tripData?.checklist || {};
+  const custom = tripData?.customItems || [];
+  const allItems = Object.values(CL_CATS).flat();
+  const total = allItems.length + custom.length;
+  const done = allItems.filter((item, i) => {
+    const cat = Object.keys(CL_CATS)[Object.values(CL_CATS).findIndex(arr => arr.includes(item))];
+    return state[`${cat}/${item}`];
+  }).length + custom.filter((_,i) => state[`custom/${i}`]).length;
+  const pct = total > 0 ? Math.round(done/total*100) : 0;
+  const el = document.getElementById('checklistProgress');
+  if (el) el.textContent = `已完成 ${done} / ${total} 項（${pct}%）`;
+  const bar = document.getElementById('checklistBar');
+  if (bar) {
+    bar.style.width = pct + '%';
+    bar.style.background = pct === 100 ? 'linear-gradient(90deg,#22c55e,#4ade80)' : 'linear-gradient(90deg,#e8526a,#c13584)';
+  }
+}
+
+// ---- Map ----
+const DAY_COLORS = ['#e53e3e','#dd6b20','#d69e2e','#38a169','#2c7be5','#6b46c1','#d53f8c','#319795'];
+let leafletMap = null;
+let geocodeCache = {};
+
+async function geocode(location, dest) {
+  const key = location;
+  if (geocodeCache[key]) return geocodeCache[key];
+  const query = dest ? `${location}, ${dest}` : location;
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+      { headers: { 'Accept-Language': 'zh-TW,zh,en' } }
+    );
+    const data = await res.json();
+    if (data.length) {
+      const result = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      geocodeCache[key] = result;
+      return result;
+    }
+  } catch(e) {}
+  return null;
+}
+
+async function renderMap() {
+  const withLocation = activities.filter(a => a.location);
+  const statusEl = document.getElementById('mapStatus');
+
+  if (!withLocation.length) {
+    statusEl.textContent = '尚未有含地點的活動，請在行程中填寫「地點」欄位';
+    return;
+  }
+
+  if (!window.L) {
+    statusEl.textContent = '載入地圖中...';
+    await new Promise(resolve => {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      s.onload = resolve;
+      document.head.appendChild(s);
+    });
+  }
+
+  statusEl.textContent = `正在定位 ${withLocation.length} 個地點...`;
+
+  const sorted = [...withLocation].sort((a,b) => (a.date+a.time < b.date+b.time ? -1 : 1));
+  const days = [...new Set(sorted.map(a => a.date||'未指定'))].sort();
+  const dest = tripData?.dest || '';
+
+  const results = [];
+  for (const a of sorted) {
+    const coord = await geocode(a.location, dest);
+    if (coord) results.push({ ...a, coord });
+  }
+
+  if (!results.length) {
+    statusEl.textContent = '找不到任何地點座標，請確認地點名稱是否正確（例：大阪城公園、東京鐵塔）';
+    return;
+  }
+
+  statusEl.textContent = `已定位 ${results.length} / ${withLocation.length} 個地點`;
+
+  const container = document.getElementById('mapContainer');
+  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
+  leafletMap = L.map(container);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 18
+  }).addTo(leafletMap);
+
+  const allBounds = [];
+  days.forEach((day, di) => {
+    const color = DAY_COLORS[di % DAY_COLORS.length];
+    const dayItems = results.filter(a => (a.date||'未指定') === day);
+    if (!dayItems.length) return;
+
+    if (dayItems.length > 1) {
+      L.polyline(dayItems.map(a => [a.coord.lat, a.coord.lng]), {
+        color, weight: 2.5, opacity: 0.55, dashArray: '6 5'
+      }).addTo(leafletMap);
+    }
+
+    dayItems.forEach((a, i) => {
+      const { lat, lng } = a.coord;
+      allBounds.push([lat, lng]);
+      const marker = L.circleMarker([lat, lng], {
+        radius: 10, fillColor: color, color: 'white',
+        weight: 2.5, fillOpacity: 0.92
+      });
+      const dayLabel = day !== '未指定' ? `第${days.indexOf(day)+1}天` : '未指定日期';
+      marker.bindPopup(`
+        <div style="min-width:160px">
+          <div style="font-size:0.7rem;color:${color};font-weight:700;margin-bottom:2px">${dayLabel} ${a.time||''}</div>
+          <div style="font-weight:700;font-size:0.9rem;margin-bottom:4px">${esc(a.title)}</div>
+          <div style="font-size:0.78rem;color:#555">📍 ${esc(a.location)}</div>
+          ${a.note ? `<div style="font-size:0.75rem;color:#888;margin-top:3px">${esc(a.note)}</div>` : ''}
+        </div>
+      `);
+      marker.addTo(leafletMap);
+    });
+  });
+
+  if (allBounds.length) leafletMap.fitBounds(allBounds, { padding: [36, 36] });
+
+  document.getElementById('mapLegend').innerHTML = days.map((day, di) => {
+    const color = DAY_COLORS[di % DAY_COLORS.length];
+    const label = day !== '未指定' ? `第${di+1}天 · ${day}` : '未指定日期';
+    return `<div class="legend-item"><div class="legend-dot" style="background:${color}"></div>${label}</div>`;
+  }).join('');
+}
+
+// ---- Edit Activity ----
+window.openEditActivity = function(id) {
+  const a = activities.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('editActId').value = id;
+  document.getElementById('editActDate').value = a.date || '';
+  document.getElementById('editActTime').value = a.time || '';
+  document.getElementById('editActCat').value = a.cat || 'other';
+  document.getElementById('editActTitle').value = a.title || '';
+  document.getElementById('editActLocation').value = a.location || '';
+  document.getElementById('editActNote').value = a.note || '';
+  openModal('editActivityModal');
+};
+
+window.saveEditActivity = async function() {
+  const id = document.getElementById('editActId').value;
+  const title = document.getElementById('editActTitle').value.trim();
+  if (!title) { showToast('請填寫活動名稱'); return; }
+  await setDoc(doc(db, 'trips', tripId, 'activities', id), {
+    date: document.getElementById('editActDate').value,
+    time: document.getElementById('editActTime').value,
+    cat: document.getElementById('editActCat').value,
+    title,
+    location: document.getElementById('editActLocation').value.trim(),
+    note: document.getElementById('editActNote').value.trim(),
+  }, { merge: true });
+  closeModal('editActivityModal');
+  showToast('✅ 活動已更新');
+};
+
+// ---- Copy & Translate Location ----
+const DEST_LANG_MAP = {
+  '日本': 'ja', 'japan': 'ja', 'fukuoka': 'ja', 'osaka': 'ja', 'tokyo': 'ja', 'kyoto': 'ja',
+  '韓國': 'ko', '韩国': 'ko', 'korea': 'ko', 'seoul': 'ko', 'busan': 'ko',
+  '泰國': 'th', '泰国': 'th', 'thailand': 'th', 'bangkok': 'th',
+  '越南': 'vi', 'vietnam': 'vi', 'hanoi': 'vi', 'hochiminh': 'vi',
+  '法國': 'fr', '法国': 'fr', 'france': 'fr', 'paris': 'fr',
+  '德國': 'de', '德国': 'de', 'germany': 'de',
+  '義大利': 'it', 'italy': 'it',
+  '西班牙': 'es', 'spain': 'es',
+  '美國': 'en', '美国': 'en', 'usa': 'en', 'america': 'en',
+  '英國': 'en', 'uk': 'en', 'england': 'en',
+  '香港': 'zh-TW', 'hongkong': 'zh-TW',
+};
+let translateCache = {};
+
+function getDestLang() {
+  const dest = (tripData?.dest || '').toLowerCase().replace(/\s/g, '');
+  for (const [key, lang] of Object.entries(DEST_LANG_MAP)) {
+    if (dest.includes(key.toLowerCase())) return lang;
+  }
+  return 'en';
+}
+
+window.copyLocation = function(location) {
+  navigator.clipboard.writeText(location).then(() => showToast('📋 地址已複製！'));
+};
+
+window.translateLocation = async function(actId, location) {
+  const lang = getDestLang();
+  const cacheKey = `${location}|${lang}`;
+  const resultEl = document.getElementById(`trans-${actId}`);
+  if (!resultEl) return;
+
+  if (lang === 'zh-TW') {
+    resultEl.style.display = 'flex';
+    resultEl.innerHTML = '<span style="color:#8892a4">（已是繁體中文，無需翻譯）</span>';
+    return;
+  }
+
+  if (translateCache[cacheKey]) {
+    showTranslateResult(resultEl, translateCache[cacheKey], actId);
+    return;
+  }
+
+  resultEl.style.display = 'flex';
+  resultEl.innerHTML = '<span class="spinner"></span> <span style="margin-left:6px">翻譯中...</span>';
+
+  try {
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(location)}&langpair=zh-TW|${lang}`
+    );
+    const data = await res.json();
+    const translated = data.responseData?.translatedText;
+    if (translated && translated.toLowerCase() !== location.toLowerCase()) {
+      translateCache[cacheKey] = translated;
+      showTranslateResult(resultEl, translated, actId);
+    } else {
+      resultEl.innerHTML = '<span style="color:#f87171">找不到翻譯結果，請確認目的地設定</span>';
+    }
+  } catch(e) {
+    resultEl.innerHTML = '<span style="color:#f87171">翻譯失敗，請稍後再試</span>';
+  }
+};
+
+function showTranslateResult(el, text, actId) {
+  el.style.display = 'flex';
+  const safe = text.replace(/'/g, "\\'");
+  el.innerHTML = `
+    <span style="flex:1">🌐 ${esc(text)}</span>
+    <span class="copy-translated" onclick="navigator.clipboard.writeText('${safe}').then(()=>showToast('✅ 已複製當地地址！'))">複製</span>
+  `;
+}
+
+// ---- Budget Page ----
+const CAT_EMOJI = { transport:'🚌', hotel:'🏨', food:'🍜', attraction:'🏛', shopping:'🛍', other:'📌' };
+
+window.saveCatBudget = async function(cat) {
+  const val = parseFloat(document.getElementById(`catbudget-${cat}`).value) || 0;
+  const catBudgets = { ...(tripData?.catBudgets || {}), [cat]: val };
+  await setDoc(doc(db, 'trips', tripId), { catBudgets }, { merge: true });
+  showToast('💾 預算已儲存');
+};
+
+function renderBudget() {
+  const catBudgets = tripData?.catBudgets || {};
+  const totalBudget = tripData?.budget || 0;
+  const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
+  const remaining = totalBudget - totalSpent;
+  const pctTotal = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
+
+  // Overview boxes
+  document.getElementById('budgetOverview').innerHTML = `
+    <div class="budget-overview-box">
+      <div class="budget-overview-label">總預算</div>
+      <div class="budget-overview-value">${totalBudget ? fmt(totalBudget) : '未設定'}</div>
+    </div>
+    <div class="budget-overview-box">
+      <div class="budget-overview-label">已花費</div>
+      <div class="budget-overview-value pink">${fmt(totalSpent)}</div>
+    </div>
+    <div class="budget-overview-box">
+      <div class="budget-overview-label">剩餘預算</div>
+      <div class="budget-overview-value ${remaining >= 0 ? 'green' : 'pink'}">${totalBudget ? fmt(remaining) : '—'}</div>
+    </div>
+    <div class="budget-overview-box">
+      <div class="budget-overview-label">消費筆數</div>
+      <div class="budget-overview-value">${expenses.length} 筆</div>
+    </div>
+  `;
+
+  // Overall progress bar
+  document.getElementById('budgetOverviewUsed').textContent = `已花費 ${fmt(totalSpent)}`;
+  document.getElementById('budgetOverviewTotal').textContent = totalBudget ? `總預算 ${fmt(totalBudget)}` : '（請在設定中填入總預算）';
+  const fill = document.getElementById('budgetOverviewFill');
+  fill.style.width = pctTotal + '%';
+  fill.className = 'budget-fill' + (pctTotal >= 100 ? ' over' : pctTotal >= 80 ? ' warn' : '');
+
+  // Per-category
+  const catSpent = {};
+  expenses.forEach(e => { catSpent[e.cat] = (catSpent[e.cat] || 0) + e.amount; });
+
+  document.getElementById('budgetCatGrid').innerHTML = Object.keys(CAT_LABELS).map(cat => {
+    const spent = catSpent[cat] || 0;
+    const budget = catBudgets[cat] || 0;
+    const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+    const over = budget > 0 && spent > budget;
+    const fillColor = over ? '#f87171' : pct >= 80 ? '#f97316' : '#4ade80';
+
+    return `
+      <div class="budget-cat-item">
+        <div class="budget-cat-header">
+          <span class="budget-cat-name">${CAT_EMOJI[cat]} ${CAT_LABELS[cat]}</span>
+          ${over ? '<span style="font-size:0.72rem;color:#f87171;font-weight:700">⚠️ 超支</span>' : ''}
+        </div>
+        <div class="budget-cat-amounts">
+          <span>已花 <b>${fmt(spent)}</b></span>
+          <span>類別預算 <b>${budget ? fmt(budget) : '未設定'}</b></span>
+          ${budget > 0 ? `<span>剩餘 <b style="color:${over ? '#f87171' : '#4ade80'}">${fmt(budget - spent)}</b></span>` : ''}
+        </div>
+        ${budget > 0 ? `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div class="budget-track" style="flex:1;margin:0"><div class="budget-fill" style="width:${pct.toFixed(1)}%;background:${fillColor}"></div></div>
+            <span class="budget-pct-badge" style="background:${over?'#3a1a1a':pct>=80?'#2a1a0a':'#0d1f14'};color:${fillColor}">${pct.toFixed(0)}%</span>
+          </div>` : ''}
+        <div class="budget-cat-input">
+          <label>設定預算上限</label>
+          <input type="number" id="catbudget-${cat}" value="${budget || ''}" placeholder="金額 (TWD)" min="0">
+          <button class="btn btn-primary" style="font-size:0.78rem;padding:6px 14px" onclick="saveCatBudget('${cat}')">儲存</button>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 // ---- Utils ----
