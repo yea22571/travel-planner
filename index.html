@@ -1095,9 +1095,11 @@ function renderItinerary() {
       const originParam = prevLocation ? `,\`${prevLocation.replace(/`/g,"'")}\`` : '';
       const navBtn = a.location ? `<button class="btn btn-nav" onclick="openNav(\`${a.location.replace(/`/g,"'")}\`${originParam})">🗺️ 導航${prevLocation ? ' (從上站)' : ''}</button>` : '';
       if (a.location) prevLocation = a.location;
+      const wx = getWeatherForDate(day);
+      const wxInline = wx ? `<span class="weather-badge" style="font-size:0.7rem;padding:1px 7px">${wx.icon} ${wx.minC}°~${wx.maxC}° ${wx.desc}</span>` : '';
       return `
       <div class="activity-item">
-        <div class="activity-time">${a.time||'--:--'}</div>
+        <div class="activity-time">${a.time||'--:--'}${wxInline}</div>
         <div class="activity-content">
           <div class="activity-title">${esc(a.title)}<span class="cat-badge cat-${a.cat}">${CAT_LABELS[a.cat]}</span></div>
           ${a.location ? `
