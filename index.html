@@ -99,9 +99,17 @@ main { width: 100%; margin: 0 auto; padding: 16px 14px; box-sizing: border-box; 
   .cat-badge { font-size: 0.78rem !important; padding: 3px 11px !important; }
   .weather-badge { font-size: 0.85rem !important; }
 
-  /* 行程雙欄 */
+  /* 行程雙欄 grid */
   .day-block { padding-left: 20px; }
-  #itineraryList .card > .day-block > .activity-item:nth-child(odd):last-child { grid-column: 1 / -1; }
+  .day-block > .activity-item { display: grid !important; grid-template-rows: auto auto; width: 100%; }
+  .day-activities-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .day-activities-grid > .activity-item:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
 
   /* 表單 */
   label { font-size: 0.9rem; }
@@ -123,7 +131,7 @@ main { width: 100%; margin: 0 auto; padding: 16px 14px; box-sizing: border-box; 
   .flight-duration { font-size: 0.88rem !important; }
 }
 
-/* 手機版：icon-only */
+/* 手機版：icon-only，單欄 */
 @media (max-width: 768px) {
   .btn-label { display: none; }
   .btn-icon { display: inline; }
@@ -131,6 +139,7 @@ main { width: 100%; margin: 0 auto; padding: 16px 14px; box-sizing: border-box; 
   .loc-btn-icon { display: inline; }
   .btn { padding: 7px 10px; }
   .btn-nav, .btn-edit, .btn-danger { min-width: 38px; text-align: center; }
+  .day-activities-grid { display: block; }
 }
 
 .card {
@@ -1196,7 +1205,7 @@ function renderItinerary() {
         </div>
       </div>`;
     }).join('');
-    return `<div class="card"><div class="day-block"><div class="day-header"><h3>${label}${wxBadge}</h3></div>${items}</div></div>`;
+    return `<div class="card"><div class="day-block"><div class="day-header"><h3>${label}${wxBadge}</h3></div><div class="day-activities-grid">${items}</div></div></div>`;
   }).join('');
   // 渲染完後非同步載入照片
   setTimeout(() => fetchActivityPhotos(sorted), 0);
