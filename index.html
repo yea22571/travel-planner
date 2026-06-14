@@ -2004,11 +2004,11 @@ window.translateLocation = async function(actId, location) {
     );
     const data = await res.json();
     const translated = data.responseData?.translatedText;
-    if (translated && translated.toLowerCase() !== location.toLowerCase()) {
+    if (translated && data.responseStatus === 200) {
       translateCache[cacheKey] = translated;
       showTranslateResult(resultEl, translated, actId);
     } else {
-      resultEl.innerHTML = '<span style="color:#f87171">找不到翻譯結果，請確認目的地設定</span>';
+      resultEl.innerHTML = '<span style="color:#f87171">翻譯失敗，請稍後再試</span>';
     }
   } catch(e) {
     resultEl.innerHTML = '<span style="color:#f87171">翻譯失敗，請稍後再試</span>';
