@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>旅遊規劃助手 ✈️</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #0a0e1a; color: #e8ecf4; min-height: 100vh; }
@@ -682,9 +681,9 @@ select option { background: #1e2538; color: #e8ecf4; }
     <div id="map" class="page">
       <div class="card">
         <h2>🗺️ 行程地圖</h2>
-        <div class="map-info-bar" id="mapStatus">切換至此頁以載入地圖</div>
-        <div id="mapContainer"></div>
-        <div class="map-legend" id="mapLegend"></div>
+        <div id="mapStatus" style="font-size:0.85rem;color:#6b7a8d;margin-bottom:10px"></div>
+        <div id="mapContainer" style="width:100%;height:480px;border-radius:12px;overflow:hidden;border:1px solid #2a3040;background:#1a1f30"></div>
+        <div id="mapPlaceList" style="margin-top:16px;display:flex;flex-direction:column;gap:8px"></div>
       </div>
     </div>
 
@@ -1874,112 +1873,50 @@ function updateChecklistProgress() {
 
 // ---- Map ----
 const DAY_COLORS = ['#e53e3e','#dd6b20','#d69e2e','#38a169','#2c7be5','#6b46c1','#d53f8c','#319795'];
-let leafletMap = null;
-let geocodeCache = {};
-
-async function geocode(location, dest) {
-  const key = location;
-  if (geocodeCache[key]) return geocodeCache[key];
-  const query = dest ? `${location}, ${dest}` : location;
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
-      { headers: { 'Accept-Language': 'zh-TW,zh,en' } }
-    );
-    const data = await res.json();
-    if (data.length) {
-      const result = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-      geocodeCache[key] = result;
-      return result;
-    }
-  } catch(e) {}
-  return null;
-}
-
-async function renderMap() {
-  const withLocation = activities.filter(a => a.location);
+function renderMap() {
+  const dest = tripData?.dest || '';
   const statusEl = document.getElementById('mapStatus');
+  const container = document.getElementById('mapContainer');
+  const placeList = document.getElementById('mapPlaceList');
+
+  // 嵌入 Google Maps iframe（以目的地為中心）
+  const query = encodeURIComponent(dest || '日本');
+  container.innerHTML = `<iframe
+    src="https://maps.google.com/maps?q=${query}&output=embed&hl=zh-TW&z=12"
+    width="100%" height="100%" style="border:0;display:block"
+    allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+  </iframe>`;
+
+  // 景點清單
+  const withLocation = [...activities]
+    .filter(a => a.location)
+    .sort((a,b) => (a.date+a.time < b.date+b.time ? -1 : 1));
 
   if (!withLocation.length) {
-    statusEl.textContent = '尚未有含地點的活動，請在行程中填寫「地點」欄位';
+    statusEl.textContent = '尚未有含地點的行程';
+    placeList.innerHTML = '';
     return;
   }
 
-  if (!window.L) {
-    statusEl.textContent = '載入地圖中...';
-    await new Promise(resolve => {
-      const s = document.createElement('script');
-      s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      s.onload = resolve;
-      document.head.appendChild(s);
-    });
-  }
+  statusEl.textContent = `共 ${withLocation.length} 個景點・點擊可在 Google Maps 搜尋`;
 
-  statusEl.textContent = `正在定位 ${withLocation.length} 個地點...`;
-
-  const sorted = [...withLocation].sort((a,b) => (a.date+a.time < b.date+b.time ? -1 : 1));
-  const days = [...new Set(sorted.map(a => a.date||'未指定'))].sort();
-  const dest = tripData?.dest || '';
-
-  const results = [];
-  for (const a of sorted) {
-    const coord = await geocode(a.location, dest);
-    if (coord) results.push({ ...a, coord });
-  }
-
-  if (!results.length) {
-    statusEl.textContent = '找不到任何地點座標，請確認地點名稱是否正確（例：大阪城公園、東京鐵塔）';
-    return;
-  }
-
-  statusEl.textContent = `已定位 ${results.length} / ${withLocation.length} 個地點`;
-
-  const container = document.getElementById('mapContainer');
-  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
-  leafletMap = L.map(container);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 18
-  }).addTo(leafletMap);
-
-  const allBounds = [];
-  days.forEach((day, di) => {
-    const color = DAY_COLORS[di % DAY_COLORS.length];
-    const dayItems = results.filter(a => (a.date||'未指定') === day);
-    if (!dayItems.length) return;
-
-    if (dayItems.length > 1) {
-      L.polyline(dayItems.map(a => [a.coord.lat, a.coord.lng]), {
-        color, weight: 2.5, opacity: 0.55, dashArray: '6 5'
-      }).addTo(leafletMap);
-    }
-
-    dayItems.forEach((a, i) => {
-      const { lat, lng } = a.coord;
-      allBounds.push([lat, lng]);
-      const marker = L.circleMarker([lat, lng], {
-        radius: 10, fillColor: color, color: 'white',
-        weight: 2.5, fillOpacity: 0.92
-      });
-      const dayLabel = day !== '未指定' ? `第${days.indexOf(day)+1}天` : '未指定日期';
-      marker.bindPopup(`
-        <div style="min-width:160px">
-          <div style="font-size:0.7rem;color:${color};font-weight:700;margin-bottom:2px">${dayLabel} ${a.time||''}</div>
-          <div style="font-weight:700;font-size:0.9rem;margin-bottom:4px">${esc(a.title)}</div>
-          <div style="font-size:0.78rem;color:#555">📍 ${esc(a.location)}</div>
-          ${a.note ? `<div style="font-size:0.75rem;color:#888;margin-top:3px">${esc(a.note)}</div>` : ''}
-        </div>
-      `);
-      marker.addTo(leafletMap);
-    });
-  });
-
-  if (allBounds.length) leafletMap.fitBounds(allBounds, { padding: [36, 36] });
-
-  document.getElementById('mapLegend').innerHTML = days.map((day, di) => {
-    const color = DAY_COLORS[di % DAY_COLORS.length];
-    const label = day !== '未指定' ? `第${di+1}天 · ${day}` : '未指定日期';
-    return `<div class="legend-item"><div class="legend-dot" style="background:${color}"></div>${label}</div>`;
+  placeList.innerHTML = withLocation.map((a, i) => {
+    const gmapUrl = `https://www.google.com/maps/search/${encodeURIComponent(a.location + (dest ? ' ' + dest : ''))}`;
+    const iframeUrl = `https://maps.google.com/maps?q=${encodeURIComponent(a.location + (dest ? ' ' + dest : ''))}&output=embed&hl=zh-TW&z=15`;
+    return `
+    <div style="display:flex;align-items:center;gap:10px;background:#1a1f30;border:1px solid #2a3040;border-radius:12px;padding:10px 14px;cursor:pointer"
+         onclick="document.getElementById('mapContainer').innerHTML='<iframe src=\\'${iframeUrl}\\' width=\\'100%\\' height=\\'100%\\' style=\\'border:0;display:block\\' allowfullscreen loading=\\'lazy\\'></iframe>'">
+      <div style="font-size:1.1rem;font-weight:800;color:#e8526a;min-width:24px;text-align:center">${i+1}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:0.95rem;color:#f0f2f7">${esc(a.title)}</div>
+        <div style="font-size:0.8rem;color:#6b7a8d;margin-top:2px">${a.date||''} ${a.time||''} · 📍 ${esc(a.location)}</div>
+      </div>
+      <a href="${gmapUrl}" target="_blank" rel="noopener"
+         onclick="event.stopPropagation()"
+         style="font-size:0.78rem;padding:5px 12px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:white;border-radius:10px;text-decoration:none;flex-shrink:0">
+        🗺️ 開啟
+      </a>
+    </div>`;
   }).join('');
 }
 
