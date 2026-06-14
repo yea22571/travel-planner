@@ -1815,6 +1815,34 @@ window.deleteCustomItem = async function(idx) {
   await setDoc(doc(db, 'trips', tripId), { customItems: cur }, { merge: true });
 };
 
+window.editCustomItem = function(idx) {
+  const label = document.getElementById(`cl-label-${idx}`);
+  if (!label) return;
+  const current = label.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = current;
+  input.style.cssText = 'flex:1;font-size:0.88rem;padding:2px 6px;border-radius:6px;border:1px solid #e8526a;background:#1e2538;color:#e8ecf4;outline:none';
+  label.replaceWith(input);
+  input.focus();
+  input.select();
+  const save = async () => {
+    const val = input.value.trim();
+    if (val && val !== current) {
+      const cur = [...(tripData?.customItems || [])];
+      cur[idx] = val;
+      await setDoc(doc(db, 'trips', tripId), { customItems: cur }, { merge: true });
+    } else {
+      renderChecklist();
+    }
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.removeEventListener('blur', save); renderChecklist(); }
+  });
+};
+
 function renderChecklist() {
   if (!tripData) return;
   const state = tripData.checklist || {};
@@ -1840,10 +1868,11 @@ function renderChecklist() {
     custom.forEach((item, i) => {
       const key = `custom/${i}`;
       const chk = state[key] || false;
-      html += `<div class="checklist-item ${chk?'done':''}" data-ck="custom/${i}">
+      html += `<div class="checklist-item ${chk?'done':''}" id="cl-item-${i}" data-ck="custom/${i}">
         <input type="checkbox" ${chk?'checked':''} onchange="toggleCheckItem('custom/${i}',this.checked)">
-        <label onclick="this.previousElementSibling.click()">${esc(item)}</label>
-        <span onclick="deleteCustomItem(${i})" style="color:#f87171;cursor:pointer;font-size:0.82rem;padding:0 4px;flex-shrink:0">✕</span>
+        <label onclick="this.previousElementSibling.click()" id="cl-label-${i}" style="flex:1">${esc(item)}</label>
+        <span onclick="editCustomItem(${i})" style="color:#8892a4;cursor:pointer;font-size:0.82rem;padding:0 4px;flex-shrink:0" title="編輯">✏️</span>
+        <span onclick="deleteCustomItem(${i})" style="color:#f87171;cursor:pointer;font-size:0.82rem;padding:0 4px;flex-shrink:0" title="刪除">✕</span>
       </div>`;
     });
     html += '</div>';
