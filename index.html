@@ -1150,11 +1150,9 @@ window.deleteActivity = async function(id) {
   await deleteDoc(doc(db, 'trips', tripId, 'activities', id));
 };
 
-window.openNav = function(destination, origin) {
+window.openNav = function(destination) {
   const dest = encodeURIComponent(destination);
-  const orig = origin ? encodeURIComponent(origin) : '';
-  const url = `https://www.google.com/maps/dir/?api=1&destination=${dest}${orig ? '&origin=' + orig : ''}&travelmode=transit`;
-  window.open(url, '_blank');
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=transit`, '_blank');
 };
 
 function renderItinerary() {
@@ -1169,11 +1167,8 @@ function renderItinerary() {
     const label = day !== '未指定日期' ? `第${dayIdx}天 · ${fmtDate(day)}` : '未指定日期';
     const wx = getWeatherForDate(day);
     const wxBadge = wx ? `<span class="weather-badge">${wx.icon} <span class="temp">${wx.minC}°~${wx.maxC}°C</span> ${wx.desc}</span>` : '';
-    let prevLocation = '';
     const items = byDay[day].map(a => {
-      const originParam = prevLocation ? `,\`${prevLocation.replace(/`/g,"'")}\`` : '';
-      const navBtn = a.location ? `<button class="btn btn-nav" onclick="openNav(\`${a.location.replace(/`/g,"'")}\`${originParam})"><span class="btn-icon">🗺️</span><span class="btn-label">${prevLocation ? '導航(從上站)' : '導航'}</span></button>` : '';
-      if (a.location) prevLocation = a.location;
+      const navBtn = a.location ? `<button class="btn btn-nav" onclick="openNav(\`${a.location.replace(/`/g,"'")}\`)"><span class="btn-icon">🗺️</span><span class="btn-label">導航</span></button>` : '';
       const wx = getWeatherForDate(day);
       const wxInline = wx ? `<span class="weather-badge" style="font-size:0.7rem;padding:1px 7px">${wx.icon} ${wx.minC}°~${wx.maxC}° ${wx.desc}</span>` : '';
       return `
