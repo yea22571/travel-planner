@@ -1072,6 +1072,7 @@ function setupListeners() {
       tripData = snap.data();
       setSyncStatus(true);
       if (!weatherData) fetchWeather();
+      migrateClAssignees();
       renderHeader();
       renderSummary();
       renderExpenses();
@@ -1851,6 +1852,37 @@ window.deleteCustomItem = async function(idx) {
   await setDoc(doc(db, 'trips', tripId), { customItems: cur }, { merge: true });
 };
 
+
+// 將舊的 clAssignees 資料遷移到新的 clMemberItems 格式
+async function migrateClAssignees() {
+  if (!tripData) return;
+  const assignees = tripData.clAssignees;
+  if (!assignees || Object.keys(assignees).length === 0) return;
+  // 已有新格式資料就跳過
+  if (tripData.clMemberItems && Object.keys(tripData.clMemberItems).length > 0) return;
+
+  const custom = tripData.customItems || [];
+  const overrides = tripData.clOverrides || {};
+  const memberItems = {};
+
+  for (const [key, member] of Object.entries(assignees)) {
+    if (!member) continue;
+    let label;
+    if (key.startsWith('custom/')) {
+      const idx = parseInt(key.split('/')[1]);
+      label = custom[idx];
+    } else {
+      // "cat/item" → take item part, apply override if any
+      label = overrides[key] || key.split('/').slice(1).join('/');
+    }
+    if (!label) continue;
+    if (!memberItems[member]) memberItems[member] = [];
+    if (!memberItems[member].includes(label)) memberItems[member].push(label);
+  }
+
+  if (Object.keys(memberItems).length === 0) return;
+  await setDoc(doc(db, 'trips', tripId), { clMemberItems: memberItems, clAssignees: {} }, { merge: true });
+}
 
 // ---- Checklist: member-item model ----
 // clMemberItems: { memberName: ["項目1","項目2",...] }
