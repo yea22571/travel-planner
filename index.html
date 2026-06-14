@@ -63,9 +63,33 @@ nav button.active {
 }
 nav button:hover:not(.active) { background: #252d45; color: #e8ecf4; border-color: #3a4560; }
 
-main { max-width: 900px; margin: 16px auto; padding: 0 14px; }
+main { width: 100%; margin: 0 auto; padding: 16px 14px; box-sizing: border-box; }
 .page { display: none; }
 .page.active { display: block; }
+
+/* 電腦版：全寬，放寬 padding */
+/* 預設：顯示文字，隱藏 icon */
+.btn-icon { display: none; }
+.btn-label { display: inline; }
+.loc-btn-icon { display: none; }
+.loc-btn-text { display: inline; }
+
+/* 電腦版：全寬 */
+@media (min-width: 769px) {
+  main { padding: 24px 40px; }
+  header { padding: 16px 40px; }
+  nav { padding: 10px 40px; }
+}
+
+/* 手機版：icon-only */
+@media (max-width: 768px) {
+  .btn-label { display: none; }
+  .btn-icon { display: inline; }
+  .loc-btn-text { display: none; }
+  .loc-btn-icon { display: inline; }
+  .btn { padding: 7px 10px; }
+  .btn-nav, .btn-edit, .btn-danger { min-width: 38px; text-align: center; }
+}
 
 .card {
   background: #141824; border-radius: 16px; padding: 18px;
@@ -1097,7 +1121,7 @@ function renderItinerary() {
     let prevLocation = '';
     const items = byDay[day].map(a => {
       const originParam = prevLocation ? `,\`${prevLocation.replace(/`/g,"'")}\`` : '';
-      const navBtn = a.location ? `<button class="btn btn-nav" onclick="openNav(\`${a.location.replace(/`/g,"'")}\`${originParam})">🗺️ 導航${prevLocation ? ' (從上站)' : ''}</button>` : '';
+      const navBtn = a.location ? `<button class="btn btn-nav" onclick="openNav(\`${a.location.replace(/`/g,"'")}\`${originParam})"><span class="btn-icon">🗺️</span><span class="btn-label">${prevLocation ? '導航(從上站)' : '導航'}</span></button>` : '';
       if (a.location) prevLocation = a.location;
       const wx = getWeatherForDate(day);
       const wxInline = wx ? `<span class="weather-badge" style="font-size:0.7rem;padding:1px 7px">${wx.icon} ${wx.minC}°~${wx.maxC}° ${wx.desc}</span>` : '';
@@ -1114,18 +1138,18 @@ function renderItinerary() {
             ${a.location ? `
               <div class="activity-location" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px">
                 <span>📍 ${esc(a.location)}</span>
-                <span style="cursor:pointer;font-size:0.68rem;padding:1px 7px;border-radius:8px;background:#0d1f14;color:#4ade80;border:1px solid #1a3a24" onclick="copyLocation('${esc(a.location)}')">複製</span>
-                <span style="cursor:pointer;font-size:0.68rem;padding:1px 7px;border-radius:8px;background:#1a1028;color:#c084fc;border:1px solid #3a2050" onclick="translateLocation('${esc(a.id)}','${esc(a.location)}')">🌐 翻譯地址</span>
+                <span style="cursor:pointer;font-size:0.68rem;padding:2px 8px;border-radius:8px;background:#0d1f14;color:#4ade80;border:1px solid #1a3a24" onclick="copyLocation('${esc(a.location)}')"><span class="loc-btn-icon">📋</span><span class="loc-btn-text"> 複製</span></span>
+                <span style="cursor:pointer;font-size:0.68rem;padding:2px 8px;border-radius:8px;background:#1a1028;color:#c084fc;border:1px solid #3a2050" onclick="translateLocation('${esc(a.id)}','${esc(a.location)}')"><span class="loc-btn-icon">🌐</span><span class="loc-btn-text"> 翻譯地址</span></span>
               </div>
               <div class="translate-result" id="trans-${a.id}" style="display:none"></div>
             ` : ''}
             ${a.note ? `<div class="activity-note">${esc(a.note)}</div>` : ''}
-            ${a.title ? `<button class="attr-info-btn" onclick="fetchAttractionInfo('${esc(a.title)}','${esc(a.location||'')}')">🔍 景點資訊</button>` : ''}
+            ${a.title ? `<button class="attr-info-btn" onclick="fetchAttractionInfo('${esc(a.title)}','${esc(a.location||'')}')"><span class="loc-btn-icon">🔍</span><span class="loc-btn-text"> 景點資訊</span></button>` : ''}
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
             ${navBtn}
-            <button class="btn btn-edit" onclick="openEditActivity('${a.id}')">✏️ 編輯</button>
-            <button class="btn btn-danger" onclick="deleteActivity('${a.id}')">刪除</button>
+            <button class="btn btn-edit" onclick="openEditActivity('${a.id}')"><span class="btn-icon">✏️</span><span class="btn-label"> 編輯</span></button>
+            <button class="btn btn-danger" onclick="deleteActivity('${a.id}')"><span class="btn-icon">🗑️</span><span class="btn-label"> 刪除</span></button>
           </div>
         </div>
       </div>`;
