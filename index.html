@@ -74,11 +74,53 @@ main { width: 100%; margin: 0 auto; padding: 16px 14px; box-sizing: border-box; 
 .loc-btn-icon { display: none; }
 .loc-btn-text { display: inline; }
 
-/* 電腦版：全寬 */
+/* 電腦版：全寬 + 放大字體 */
 @media (min-width: 769px) {
-  main { padding: 24px 40px; }
-  header { padding: 16px 40px; }
-  nav { padding: 10px 40px; }
+  body { font-size: 16px; }
+  main { padding: 24px 48px; }
+  header { padding: 18px 48px; }
+  header h1 { font-size: 1.4rem !important; }
+  .header-meta { font-size: 0.92rem !important; }
+  nav { padding: 12px 48px; gap: 12px; }
+  nav button { font-size: 0.95rem; padding: 10px 20px; }
+
+  /* 卡片 */
+  .card { padding: 24px; margin-bottom: 20px; border-radius: 20px; }
+  .card h2 { font-size: 1.15rem; }
+
+  /* 行程 */
+  .day-header h3 { font-size: 1.1rem !important; }
+  .activity-item { padding: 16px 18px; gap: 14px; border-radius: 14px; margin-bottom: 12px; }
+  .activity-time { font-size: 1rem !important; min-width: 58px !important; }
+  .activity-title { font-size: 1.05rem !important; }
+  .activity-note { font-size: 0.88rem !important; }
+  .activity-location { font-size: 0.88rem !important; }
+  .activity-card-photo { width: 88px !important; height: 88px !important; border-radius: 12px !important; }
+  .cat-badge { font-size: 0.78rem !important; padding: 3px 11px !important; }
+  .weather-badge { font-size: 0.85rem !important; }
+
+  /* 行程雙欄 */
+  .day-block { padding-left: 20px; }
+  #itineraryList .card > .day-block > .activity-item:nth-child(odd):last-child { grid-column: 1 / -1; }
+
+  /* 表單 */
+  label { font-size: 0.9rem; }
+  input, select, textarea { font-size: 1rem; padding: 10px 14px; }
+  .btn { font-size: 0.95rem; padding: 10px 20px; }
+  .btn-danger { font-size: 0.88rem !important; }
+  .btn-nav { font-size: 0.88rem !important; }
+
+  /* 消費列表 */
+  .exp-title { font-size: 1rem !important; }
+  .exp-meta { font-size: 0.88rem !important; }
+  .exp-amount { font-size: 1rem !important; }
+  .summary-value { font-size: 1.5rem !important; }
+  .summary-label { font-size: 0.88rem !important; }
+
+  /* 航班 */
+  .flight-airport-code { font-size: 2rem !important; }
+  .flight-airport-time { font-size: 0.92rem !important; }
+  .flight-duration { font-size: 0.88rem !important; }
 }
 
 /* 手機版：icon-only */
