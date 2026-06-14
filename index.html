@@ -1378,39 +1378,61 @@ async function fetchWeather() {
   const dest = tripData?.dest;
   if (!dest) return;
   try {
-    const res = await fetch(`https://wttr.in/${encodeURIComponent(dest)}?format=j1`);
-    if (!res.ok) return;
-    const data = await res.json();
-    weatherData = data;
+    // Step 1: geocode destination name → lat/lon
+    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(dest)}&count=1&language=zh&format=json`);
+    if (!geoRes.ok) return;
+    const geoData = await geoRes.json();
+    const loc = geoData.results?.[0];
+    if (!loc) return;
+    // Step 2: fetch 16-day daily forecast
+    const wxRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=16`);
+    if (!wxRes.ok) return;
+    const wxData = await wxRes.json();
+    weatherData = wxData;
     renderItinerary();
   } catch(e) {}
 }
 
 function getWeatherForDate(dateStr) {
   if (!weatherData || !dateStr) return null;
-  const today = new Date().toISOString().slice(0, 10);
-  const dayOffset = Math.round((new Date(dateStr) - new Date(today)) / 86400000);
-  if (dayOffset < 0 || dayOffset > 2) return null;
-  const w = weatherData.weather?.[dayOffset];
-  if (!w) return null;
-  const code = parseInt(w.hourly?.[4]?.weatherCode || '113');
+  const dates = weatherData.daily?.time;
+  if (!dates) return null;
+  const idx = dates.indexOf(dateStr);
+  if (idx === -1) return null;
+  const code = weatherData.daily.weathercode[idx];
   return {
     icon: weatherIcon(code),
-    desc: w.hourly?.[4]?.weatherDesc?.[0]?.value?.split(' ')[0] || '',
-    maxC: w.maxtempC,
-    minC: w.mintempC,
+    desc: weatherDesc(code),
+    maxC: Math.round(weatherData.daily.temperature_2m_max[idx]),
+    minC: Math.round(weatherData.daily.temperature_2m_min[idx]),
   };
 }
 
 function weatherIcon(c) {
-  if (c === 113) return '☀️';
-  if (c === 116) return '⛅';
-  if (c === 119 || c === 122) return '☁️';
-  if (c >= 143 && c <= 185) return '🌫️';
-  if (c >= 200 && c <= 282) return '⛈️';
-  if (c >= 293 && c <= 374) return '🌧️';
-  if (c >= 375 && c <= 395) return '🌨️';
+  if (c === 0) return '☀️';
+  if (c <= 2) return '⛅';
+  if (c === 3) return '☁️';
+  if (c <= 48) return '🌫️';
+  if (c <= 67) return '🌧️';
+  if (c <= 77) return '🌨️';
+  if (c <= 82) return '🌧️';
+  if (c <= 86) return '🌨️';
+  if (c <= 99) return '⛈️';
   return '🌤️';
+}
+
+function weatherDesc(c) {
+  if (c === 0) return '晴';
+  if (c <= 2) return '多雲';
+  if (c === 3) return '陰';
+  if (c <= 48) return '霧';
+  if (c <= 57) return '毛毛雨';
+  if (c <= 67) return '雨';
+  if (c <= 77) return '雪';
+  if (c <= 82) return '陣雨';
+  if (c <= 86) return '陣雪';
+  if (c <= 99) return '雷雨';
+  return '';
 }
 
 // ---- Flights ----
