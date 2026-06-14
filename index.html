@@ -1928,68 +1928,145 @@ function renderChecklist() {
   const overrides = tripData.clOverrides || {};
   const assignees = tripData.clAssignees || {};
   const members = tripData.clMembers || [];
-  const filter = clActiveFilter;
 
   renderClMembers();
 
-  const makeAssignBtn = (key) => {
-    if (!members.length) return '';
-    const assigned = assignees[key];
-    return `<button class="cl-assignee-btn ${assigned?'assigned':''}" onclick="assignClItem('${key.replace(/'/g,"\\'")}')">
-      ${assigned ? '👤 '+esc(assigned) : '指派'}
-    </button>`;
+  // 收集所有項目 {key, label, isCustom, customIdx?}
+  const allItems = [];
+  for (const [cat, defaultItems] of Object.entries(CL_CATS)) {
+    defaultItems.forEach(item => {
+      const key = `${cat}/${item}`;
+      allItems.push({ key, label: overrides[key] || item, cat, isCustom: false });
+    });
+  }
+  custom.forEach((item, i) => {
+    allItems.push({ key: `custom/${i}`, label: item, cat: '⭐ 自訂', isCustom: true, customIdx: i });
+  });
+
+  const makeItemRow = ({ key, label, isCustom, customIdx, cat }) => {
+    const chk = state[key] || false;
+    const safeKey = key.replace(/'/g,"\\'");
+    const domId = key.replace(/\//g,'-').replace(/\s/g,'_');
+    const safeLabel = label.replace(/'/g,"\\'");
+    const editFn = isCustom
+      ? `editCheckItem('${safeKey}','${safeLabel}',true,${customIdx})`
+      : `editCheckItem('${safeKey}','${safeLabel}',false)`;
+    const catBadge = `<span style="font-size:0.65rem;color:#6b7a8d;margin-left:4px">${cat.split(' ')[0]}</span>`;
+    return `<div class="checklist-item ${chk?'done':''}">
+      <input type="checkbox" ${chk?'checked':''} onchange="toggleCheckItem('${safeKey}',this.checked)">
+      <label id="cl-label-${domId}" onclick="this.previousElementSibling.click()" style="flex:1">${esc(label)}${catBadge}</label>
+      <span onclick="${editFn}" style="color:#8892a4;cursor:pointer;font-size:0.82rem;padding:0 3px;flex-shrink:0">✏️</span>
+      ${isCustom ? `<span onclick="deleteCustomItem(${customIdx})" style="color:#f87171;cursor:pointer;font-size:0.82rem;padding:0 3px;flex-shrink:0">✕</span>` : ''}
+    </div>`;
   };
 
-  const matchFilter = (key) => filter === '全部' || assignees[key] === filter;
+  const addRowForMember = (member) => {
+    const mId = member.replace(/[^a-zA-Z0-9一-鿿]/g,'_');
+    return `<div style="display:flex;gap:6px;margin-top:8px">
+      <input type="text" id="cl-add-${mId}" placeholder="新增項目..." style="flex:1;font-size:0.82rem;padding:5px 10px">
+      <button class="btn btn-ghost" style="padding:5px 12px;font-size:0.8rem" onclick="addItemToMember('${member.replace(/'/g,"\\'")}')">＋ 新增</button>
+    </div>`;
+  };
 
   let html = '';
-  for (const [cat, defaultItems] of Object.entries(CL_CATS)) {
-    const items = defaultItems.map(item => {
-      const key = `${cat}/${item}`;
-      return { key, label: overrides[key] || item };
-    }).filter(({ key }) => matchFilter(key));
-    if (!items.length) continue;
 
-    const done = items.filter(({ key }) => state[key]).length;
-    html += `<div class="checklist-cat-section">
-      <div class="checklist-cat-title">${cat} <span style="font-size:0.72rem;color:#8892a4;font-weight:400">${done}/${items.length}</span></div>`;
-    items.forEach(({ key, label }) => {
-      const chk = state[key] || false;
-      const safeKey = key.replace(/'/g,"\\'");
-      const domId = key.replace(/\//g,'-');
-      html += `<div class="checklist-item ${chk?'done':''}">
-        <input type="checkbox" ${chk?'checked':''} onchange="toggleCheckItem('${safeKey}',this.checked)">
-        <label id="cl-label-${domId}" onclick="this.previousElementSibling.click()" style="flex:1">${esc(label)}</label>
-        ${makeAssignBtn(key)}
-        <span onclick="editCheckItem('${safeKey}','${label.replace(/'/g,"\\'")}',false)" style="color:#8892a4;cursor:pointer;font-size:0.82rem;padding:0 4px;flex-shrink:0">✏️</span>
+  if (members.length) {
+    // 成員區塊模式
+    members.forEach(member => {
+      const memberItems = allItems.filter(it => assignees[it.key] === member);
+      const done = memberItems.filter(it => state[it.key]).length;
+      html += `<div class="checklist-cat-section" style="background:#141824;border:1px solid #2a3040;border-radius:14px;padding:14px;margin-bottom:12px">
+        <div class="checklist-cat-title" style="font-size:0.95rem;color:#c084fc;margin-bottom:10px">
+          👤 ${esc(member)} <span style="font-size:0.72rem;color:#8892a4;font-weight:400">${done}/${memberItems.length} 完成</span>
+        </div>
+        ${memberItems.length ? memberItems.map(makeItemRow).join('') : '<div style="font-size:0.82rem;color:#3a4560;padding:4px 0">尚未分配任何物品</div>'}
+        ${addRowForMember(member)}
       </div>`;
     });
-    html += '</div>';
-  }
 
-  const customFiltered = custom.map((item, i) => ({ item, i, key: `custom/${i}` }))
-    .filter(({ key }) => matchFilter(key));
-  if (customFiltered.length) {
-    const done = customFiltered.filter(({ key }) => state[key]).length;
-    html += `<div class="checklist-cat-section">
-      <div class="checklist-cat-title">⭐ 自訂項目 <span style="font-size:0.72rem;color:#8892a4;font-weight:400">${done}/${customFiltered.length}</span></div>`;
-    customFiltered.forEach(({ item, i, key }) => {
-      const chk = state[key] || false;
-      const domId = `custom-${i}`;
-      html += `<div class="checklist-item ${chk?'done':''}" id="cl-item-${i}">
-        <input type="checkbox" ${chk?'checked':''} onchange="toggleCheckItem('custom/${i}',this.checked)">
-        <label id="cl-label-${domId}" onclick="this.previousElementSibling.click()" style="flex:1">${esc(item)}</label>
-        ${makeAssignBtn(key)}
-        <span onclick="editCheckItem('custom/${i}','${item.replace(/'/g,"\\'")}',true,${i})" style="color:#8892a4;cursor:pointer;font-size:0.82rem;padding:0 4px;flex-shrink:0">✏️</span>
-        <span onclick="deleteCustomItem(${i})" style="color:#f87171;cursor:pointer;font-size:0.82rem;padding:0 4px;flex-shrink:0">✕</span>
+    // 未分配區塊
+    const unassigned = allItems.filter(it => !assignees[it.key]);
+    if (unassigned.length) {
+      const done = unassigned.filter(it => state[it.key]).length;
+      html += `<div class="checklist-cat-section" style="border:1px dashed #2a3040;border-radius:14px;padding:14px;margin-bottom:12px">
+        <div class="checklist-cat-title" style="font-size:0.88rem;color:#6b7a8d;margin-bottom:10px">
+          📦 未分配 <span style="font-size:0.72rem;font-weight:400">${done}/${unassigned.length}</span>
+          <span style="font-size:0.7rem;color:#3a4560;font-weight:400;margin-left:8px">點 ✏️ 旁邊可指派成員</span>
+        </div>`;
+      // 依類別分組顯示未分配項目
+      const cats = [...new Set(unassigned.map(it => it.cat))];
+      cats.forEach(cat => {
+        const catItems = unassigned.filter(it => it.cat === cat);
+        html += `<div style="font-size:0.75rem;color:#4a5568;margin:6px 0 2px;font-weight:600">${cat}</div>`;
+        catItems.forEach(it => {
+          const chk = state[it.key] || false;
+          const safeKey = it.key.replace(/'/g,"\\'");
+          const domId = it.key.replace(/\//g,'-').replace(/\s/g,'_');
+          const safeLabel = it.label.replace(/'/g,"\\'");
+          const editFn = it.isCustom
+            ? `editCheckItem('${safeKey}','${safeLabel}',true,${it.customIdx})`
+            : `editCheckItem('${safeKey}','${safeLabel}',false)`;
+          html += `<div class="checklist-item ${chk?'done':''}">
+            <input type="checkbox" ${chk?'checked':''} onchange="toggleCheckItem('${safeKey}',this.checked)">
+            <label id="cl-label-${domId}" onclick="this.previousElementSibling.click()" style="flex:1">${esc(it.label)}</label>
+            <button class="cl-assignee-btn" onclick="assignClItemTo('${safeKey}')">指派</button>
+            <span onclick="${editFn}" style="color:#8892a4;cursor:pointer;font-size:0.82rem;padding:0 3px">✏️</span>
+            ${it.isCustom ? `<span onclick="deleteCustomItem(${it.customIdx})" style="color:#f87171;cursor:pointer;font-size:0.82rem;padding:0 3px">✕</span>` : ''}
+          </div>`;
+        });
+      });
+      html += '</div>';
+    }
+  } else {
+    // 無成員：原類別視圖
+    for (const [cat, defaultItems] of Object.entries(CL_CATS)) {
+      const items = defaultItems.map(item => {
+        const key = `${cat}/${item}`;
+        return { key, label: overrides[key] || item, cat, isCustom: false };
+      });
+      const done = items.filter(it => state[it.key]).length;
+      html += `<div class="checklist-cat-section">
+        <div class="checklist-cat-title">${cat} <span style="font-size:0.72rem;color:#8892a4;font-weight:400">${done}/${items.length}</span></div>
+        ${items.map(makeItemRow).join('')}
       </div>`;
-    });
-    html += '</div>';
+    }
+    if (custom.length) {
+      const items = custom.map((item, i) => ({ key:`custom/${i}`, label:item, cat:'⭐ 自訂', isCustom:true, customIdx:i }));
+      const done = items.filter(it => state[it.key]).length;
+      html += `<div class="checklist-cat-section">
+        <div class="checklist-cat-title">⭐ 自訂項目 <span style="font-size:0.72rem;color:#8892a4;font-weight:400">${done}/${items.length}</span></div>
+        ${items.map(makeItemRow).join('')}
+      </div>`;
+    }
   }
 
   document.getElementById('checklistBody').innerHTML = html;
   updateChecklistProgress();
 }
+
+window.addItemToMember = async function(member) {
+  const mId = member.replace(/[^a-zA-Z0-9一-鿿]/g,'_');
+  const input = document.getElementById(`cl-add-${mId}`);
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) return;
+  const cur = [...(tripData?.customItems || [])];
+  const newIdx = cur.length;
+  cur.push(val);
+  const assignees = { ...(tripData?.clAssignees || {}), [`custom/${newIdx}`]: member };
+  await setDoc(doc(db, 'trips', tripId), { customItems: cur, clAssignees: assignees }, { merge: true });
+  input.value = '';
+};
+
+window.assignClItemTo = async function(key) {
+  const members = tripData?.clMembers || [];
+  if (!members.length) { showToast('請先新增成員'); return; }
+  const assignees = { ...(tripData?.clAssignees || {}) };
+  const cur = assignees[key];
+  const idx = members.indexOf(cur);
+  assignees[key] = idx < members.length - 1 ? members[idx + 1] : members[0];
+  await setDoc(doc(db, 'trips', tripId), { clAssignees: assignees }, { merge: true });
+};
 
 function updateChecklistProgress() {
   const state = tripData?.checklist || {};
