@@ -311,9 +311,9 @@ select option { background: #1e2538; color: #e8ecf4; }
 /* Attraction info modal */
 .attr-photo { width:100%; height:200px; object-fit:cover; border-radius:12px; margin-bottom:14px; display:block; }
 .attr-photo-placeholder { width:100%; height:140px; background:linear-gradient(135deg,#1a1028,#1e2538); border-radius:12px; margin-bottom:14px; display:flex; align-items:center; justify-content:center; font-size:2.5rem; color:#3a4560; }
-.activity-card-photo { width:72px; height:72px; object-fit:cover; border-radius:10px; display:block; flex-shrink:0; }
-.activity-card-photo-wrap { flex-shrink:0; }
-.activity-card-photo-wrap.loaded { display:flex; align-items:center; }
+.activity-card-photo { width:64px; height:64px; object-fit:cover; border-radius:10px; display:block; flex-shrink:0; }
+.activity-card-photo-wrap { flex-shrink:0; display:none; }
+.activity-card-photo-wrap.loaded { display:block; }
 .attr-title { font-size:1.1rem; font-weight:800; color:#f0f2f7; margin-bottom:6px; }
 .attr-extract { font-size:0.84rem; color:#8892a4; line-height:1.7; margin-bottom:14px; max-height:140px; overflow-y:auto; }
 .attr-links { display:flex; gap:8px; flex-wrap:wrap; }
@@ -1102,26 +1102,31 @@ function renderItinerary() {
       const wx = getWeatherForDate(day);
       const wxInline = wx ? `<span class="weather-badge" style="font-size:0.7rem;padding:1px 7px">${wx.icon} ${wx.minC}°~${wx.maxC}° ${wx.desc}</span>` : '';
       return `
-      <div class="activity-item">
-        <div class="activity-time">${a.time||'--:--'}${wxInline}</div>
-        <div class="activity-card-photo-wrap" id="photo-wrap-${a.id}"></div>
-        <div class="activity-content">
-          <div class="activity-title">${esc(a.title)}<span class="cat-badge cat-${a.cat}">${CAT_LABELS[a.cat]}</span></div>
-          ${a.location ? `
-            <div class="activity-location" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px">
-              <span>📍 ${esc(a.location)}</span>
-              <span style="cursor:pointer;font-size:0.68rem;padding:1px 7px;border-radius:8px;background:#0d1f14;color:#4ade80;border:1px solid #1a3a24" onclick="copyLocation('${esc(a.location)}')">複製</span>
-              <span style="cursor:pointer;font-size:0.68rem;padding:1px 7px;border-radius:8px;background:#1a1028;color:#c084fc;border:1px solid #3a2050" onclick="translateLocation('${esc(a.id)}','${esc(a.location)}')">🌐 翻譯地址</span>
-            </div>
-            <div class="translate-result" id="trans-${a.id}" style="display:none"></div>
-          ` : ''}
-          ${a.note ? `<div class="activity-note">${esc(a.note)}</div>` : ''}
-          ${a.title ? `<button class="attr-info-btn" onclick="fetchAttractionInfo('${esc(a.title)}','${esc(a.location||'')}')">🔍 景點資訊</button>` : ''}
+      <div class="activity-item" style="flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="activity-time" style="font-size:1rem;min-width:52px">${a.time||'--:--'}</span>
+          ${wxInline}
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-          ${navBtn}
-          <button class="btn btn-edit" onclick="openEditActivity('${a.id}')">✏️ 編輯</button>
-          <button class="btn btn-danger" onclick="deleteActivity('${a.id}')">刪除</button>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div class="activity-card-photo-wrap" id="photo-wrap-${a.id}"></div>
+          <div class="activity-content" style="flex:1;min-width:0">
+            <div class="activity-title">${esc(a.title)}<span class="cat-badge cat-${a.cat}">${CAT_LABELS[a.cat]}</span></div>
+            ${a.location ? `
+              <div class="activity-location" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px">
+                <span>📍 ${esc(a.location)}</span>
+                <span style="cursor:pointer;font-size:0.68rem;padding:1px 7px;border-radius:8px;background:#0d1f14;color:#4ade80;border:1px solid #1a3a24" onclick="copyLocation('${esc(a.location)}')">複製</span>
+                <span style="cursor:pointer;font-size:0.68rem;padding:1px 7px;border-radius:8px;background:#1a1028;color:#c084fc;border:1px solid #3a2050" onclick="translateLocation('${esc(a.id)}','${esc(a.location)}')">🌐 翻譯地址</span>
+              </div>
+              <div class="translate-result" id="trans-${a.id}" style="display:none"></div>
+            ` : ''}
+            ${a.note ? `<div class="activity-note">${esc(a.note)}</div>` : ''}
+            ${a.title ? `<button class="attr-info-btn" onclick="fetchAttractionInfo('${esc(a.title)}','${esc(a.location||'')}')">🔍 景點資訊</button>` : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+            ${navBtn}
+            <button class="btn btn-edit" onclick="openEditActivity('${a.id}')">✏️ 編輯</button>
+            <button class="btn btn-danger" onclick="deleteActivity('${a.id}')">刪除</button>
+          </div>
         </div>
       </div>`;
     }).join('');
