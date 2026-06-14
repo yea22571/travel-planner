@@ -1071,10 +1071,10 @@ window.deleteActivity = async function(id) {
   await deleteDoc(doc(db, 'trips', tripId, 'activities', id));
 };
 
-window.openNav = function(location) {
-  // 優先開啟手機 Google Maps App，桌機開啟網頁版
-  const encoded = encodeURIComponent(location);
-  const url = `https://www.google.com/maps/dir/?api=1&destination=${encoded}&travelmode=transit`;
+window.openNav = function(destination, origin) {
+  const dest = encodeURIComponent(destination);
+  const orig = origin ? encodeURIComponent(origin) : '';
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${dest}${orig ? '&origin=' + orig : ''}&travelmode=transit`;
   window.open(url, '_blank');
 };
 
@@ -1090,7 +1090,12 @@ function renderItinerary() {
     const label = day !== '未指定日期' ? `第${dayIdx}天 · ${fmtDate(day)}` : '未指定日期';
     const wx = getWeatherForDate(day);
     const wxBadge = wx ? `<span class="weather-badge">${wx.icon} <span class="temp">${wx.minC}°~${wx.maxC}°C</span> ${wx.desc}</span>` : '';
-    const items = byDay[day].map(a => `
+    let prevLocation = '';
+    const items = byDay[day].map(a => {
+      const originParam = prevLocation ? `,\`${prevLocation.replace(/`/g,"'")}\`` : '';
+      const navBtn = a.location ? `<button class="btn btn-nav" onclick="openNav(\`${a.location.replace(/`/g,"'")}\`${originParam})">🗺️ 導航${prevLocation ? ' (從上站)' : ''}</button>` : '';
+      if (a.location) prevLocation = a.location;
+      return `
       <div class="activity-item">
         <div class="activity-time">${a.time||'--:--'}</div>
         <div class="activity-content">
@@ -1107,11 +1112,12 @@ function renderItinerary() {
           ${a.title ? `<button class="attr-info-btn" onclick="fetchAttractionInfo('${esc(a.title)}','${esc(a.location||'')}')">🔍 景點資訊</button>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-          ${a.location ? `<button class="btn btn-nav" onclick="openNav('${esc(a.location)}')">🗺️ 導航</button>` : ''}
+          ${navBtn}
           <button class="btn btn-edit" onclick="openEditActivity('${a.id}')">✏️ 編輯</button>
           <button class="btn btn-danger" onclick="deleteActivity('${a.id}')">刪除</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     return `<div class="card"><div class="day-block"><div class="day-header"><h3>${label}${wxBadge}</h3></div>${items}</div></div>`;
   }).join('');
 }
