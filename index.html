@@ -1942,7 +1942,7 @@ window.deleteMemberItem = async function(member, item) {
 };
 
 window.editMemberItem = function(member, item) {
-  const domId = `mi-${CSS.escape(member + '/' + item)}`;
+  const domId = `mi-${member.replace(/[^a-zA-Z0-9]/g,'_')}_${item.replace(/[^a-zA-Z0-9]/g,'_')}`;
   const labelEl = document.getElementById(domId);
   if (!labelEl) return;
   const input = document.createElement('input');
