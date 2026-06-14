@@ -374,6 +374,12 @@ select option { background: #1e2538; color: #e8ecf4; }
 
 /* Checklist */
 .checklist-cat-section { margin-bottom:16px; }
+.cl-member-chip { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:0.78rem; font-weight:600; background:#1e2538; border:1px solid #3a4560; color:#e8ecf4; }
+.cl-member-chip .cl-chip-del { color:#f87171; cursor:pointer; font-size:0.7rem; }
+.cl-filter-btn { padding:5px 14px; border-radius:20px; border:1px solid #2a3040; background:#1e2538; color:#8892a4; font-size:0.8rem; cursor:pointer; }
+.cl-filter-btn.active { background:linear-gradient(135deg,#e8526a,#c13584); color:white; border-color:transparent; }
+.cl-assignee-btn { font-size:0.68rem; padding:2px 8px; border-radius:10px; border:1px solid #3a4560; background:#1e2538; color:#8892a4; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+.cl-assignee-btn.assigned { background:#1a1028; border-color:#7c3aed; color:#c084fc; }
 .checklist-cat-title { font-size:0.84rem; font-weight:700; color:#e8526a; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #2a3040; display:flex; align-items:center; gap:6px; }
 .checklist-item { display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid #1a1f30; transition:opacity 0.2s; }
 .checklist-item:last-child { border-bottom:none; }
@@ -659,6 +665,21 @@ select option { background: #1e2538; color: #e8ecf4; }
     <div id="checklist" class="page">
       <div class="card">
         <h2>✅ 行前打包清單</h2>
+
+        <!-- 成員管理 -->
+        <div style="margin-bottom:14px;padding:12px 14px;background:#1a1f30;border-radius:12px;border:1px solid #2a3040">
+          <div style="font-size:0.82rem;color:#e8526a;font-weight:700;margin-bottom:8px">👥 行程成員</div>
+          <div id="clMemberChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="clMemberInput" placeholder="新增成員姓名" style="flex:1;font-size:0.85rem">
+            <button class="btn btn-ghost" style="padding:6px 14px;font-size:0.82rem" onclick="addClMember()">＋ 新增</button>
+          </div>
+        </div>
+
+        <!-- 篩選 -->
+        <div id="clFilterBar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+
+        <!-- 進度 -->
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
           <div style="flex:1;font-size:0.82rem;color:#8892a4" id="checklistProgress">計算中...</div>
           <button class="btn btn-ghost" style="font-size:0.75rem;padding:4px 12px" onclick="resetChecklist()">重置</button>
@@ -666,7 +687,9 @@ select option { background: #1e2538; color: #e8ecf4; }
         <div class="budget-track" style="margin-bottom:16px">
           <div class="budget-fill" id="checklistBar" style="width:0%"></div>
         </div>
+
         <div id="checklistBody"></div>
+
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid #2a3040">
           <div style="font-size:0.84rem;color:#e8526a;font-weight:700;margin-bottom:8px">＋ 新增自訂項目</div>
           <div class="checklist-add-row">
@@ -1815,25 +1838,80 @@ window.deleteCustomItem = async function(idx) {
   await setDoc(doc(db, 'trips', tripId), { customItems: cur }, { merge: true });
 };
 
-window.editCustomItem = function(idx) {
-  const label = document.getElementById(`cl-label-${idx}`);
-  if (!label) return;
-  const current = label.textContent;
+
+let clActiveFilter = '全部';
+
+function renderClMembers() {
+  const members = tripData?.clMembers || [];
+  document.getElementById('clMemberChips').innerHTML = members.map((m, i) => `
+    <span class="cl-member-chip">👤 ${esc(m)}
+      <span class="cl-chip-del" onclick="deleteClMember(${i})">✕</span>
+    </span>`).join('');
+
+  const filterBar = document.getElementById('clFilterBar');
+  const all = ['全部', ...members];
+  filterBar.innerHTML = all.map(f => `
+    <button class="cl-filter-btn ${clActiveFilter===f?'active':''}" onclick="setClFilter('${esc(f)}')">${f==='全部'?'全部':'👤 '+esc(f)}</button>
+  `).join('');
+}
+
+window.addClMember = async function() {
+  const input = document.getElementById('clMemberInput');
+  const name = input.value.trim();
+  if (!name) return;
+  const cur = [...(tripData?.clMembers || [])];
+  if (cur.includes(name)) { showToast('成員已存在'); return; }
+  cur.push(name);
+  await setDoc(doc(db, 'trips', tripId), { clMembers: cur }, { merge: true });
+  input.value = '';
+};
+
+window.deleteClMember = async function(idx) {
+  const cur = [...(tripData?.clMembers || [])];
+  const name = cur[idx];
+  cur.splice(idx, 1);
+  // 清除該成員的分配
+  const assignees = { ...(tripData?.clAssignees || {}) };
+  Object.keys(assignees).forEach(k => { if (assignees[k] === name) delete assignees[k]; });
+  await setDoc(doc(db, 'trips', tripId), { clMembers: cur, clAssignees: assignees }, { merge: true });
+  if (clActiveFilter === name) clActiveFilter = '全部';
+};
+
+window.setClFilter = function(name) {
+  clActiveFilter = name;
+  renderChecklist();
+};
+
+window.assignClItem = async function(key) {
+  const members = tripData?.clMembers || [];
+  if (!members.length) { showToast('請先新增成員'); return; }
+  const assignees = { ...(tripData?.clAssignees || {}) };
+  const cur = assignees[key];
+  const idx = members.indexOf(cur);
+  assignees[key] = idx < members.length - 1 ? members[idx + 1] : null;
+  if (!assignees[key]) delete assignees[key];
+  await setDoc(doc(db, 'trips', tripId), { clAssignees: assignees }, { merge: true });
+};
+
+window.editCheckItem = function(key, currentLabel, isCustom, customIdx) {
+  const labelEl = document.getElementById(`cl-label-${key.replace(/\//g,'-')}`);
+  if (!labelEl) return;
   const input = document.createElement('input');
   input.type = 'text';
-  input.value = current;
+  input.value = currentLabel;
   input.style.cssText = 'flex:1;font-size:0.88rem;padding:2px 6px;border-radius:6px;border:1px solid #e8526a;background:#1e2538;color:#e8ecf4;outline:none';
-  label.replaceWith(input);
-  input.focus();
-  input.select();
+  labelEl.replaceWith(input);
+  input.focus(); input.select();
   const save = async () => {
     const val = input.value.trim();
-    if (val && val !== current) {
+    if (!val) { renderChecklist(); return; }
+    if (isCustom) {
       const cur = [...(tripData?.customItems || [])];
-      cur[idx] = val;
+      cur[customIdx] = val;
       await setDoc(doc(db, 'trips', tripId), { customItems: cur }, { merge: true });
     } else {
-      renderChecklist();
+      const overrides = { ...(tripData?.clOverrides || {}), [key]: val };
+      await setDoc(doc(db, 'trips', tripId), { clOverrides: overrides }, { merge: true });
     }
   };
   input.addEventListener('blur', save);
@@ -1847,36 +1925,68 @@ function renderChecklist() {
   if (!tripData) return;
   const state = tripData.checklist || {};
   const custom = tripData.customItems || [];
+  const overrides = tripData.clOverrides || {};
+  const assignees = tripData.clAssignees || {};
+  const members = tripData.clMembers || [];
+  const filter = clActiveFilter;
+
+  renderClMembers();
+
+  const makeAssignBtn = (key) => {
+    if (!members.length) return '';
+    const assigned = assignees[key];
+    return `<button class="cl-assignee-btn ${assigned?'assigned':''}" onclick="assignClItem('${key.replace(/'/g,"\\'")}')">
+      ${assigned ? '👤 '+esc(assigned) : '指派'}
+    </button>`;
+  };
+
+  const matchFilter = (key) => filter === '全部' || assignees[key] === filter;
+
   let html = '';
-  for (const [cat, items] of Object.entries(CL_CATS)) {
-    const done = items.filter(i => state[`${cat}/${i}`]).length;
+  for (const [cat, defaultItems] of Object.entries(CL_CATS)) {
+    const items = defaultItems.map(item => {
+      const key = `${cat}/${item}`;
+      return { key, label: overrides[key] || item };
+    }).filter(({ key }) => matchFilter(key));
+    if (!items.length) continue;
+
+    const done = items.filter(({ key }) => state[key]).length;
     html += `<div class="checklist-cat-section">
       <div class="checklist-cat-title">${cat} <span style="font-size:0.72rem;color:#8892a4;font-weight:400">${done}/${items.length}</span></div>`;
-    items.forEach(item => {
-      const key = `${cat}/${item}`;
+    items.forEach(({ key, label }) => {
       const chk = state[key] || false;
-      const safeKey = key.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      html += `<div class="checklist-item ${chk?'done':''}" data-ck="${key.replace(/"/g,'&quot;')}">
+      const safeKey = key.replace(/'/g,"\\'");
+      const domId = key.replace(/\//g,'-');
+      html += `<div class="checklist-item ${chk?'done':''}">
         <input type="checkbox" ${chk?'checked':''} onchange="toggleCheckItem('${safeKey}',this.checked)">
-        <label onclick="this.previousElementSibling.click()">${item}</label>
+        <label id="cl-label-${domId}" onclick="this.previousElementSibling.click()" style="flex:1">${esc(label)}</label>
+        ${makeAssignBtn(key)}
+        <span onclick="editCheckItem('${safeKey}','${label.replace(/'/g,"\\'")}',false)" style="color:#8892a4;cursor:pointer;font-size:0.82rem;padding:0 4px;flex-shrink:0">✏️</span>
       </div>`;
     });
     html += '</div>';
   }
-  if (custom.length) {
-    html += `<div class="checklist-cat-section"><div class="checklist-cat-title">⭐ 自訂項目</div>`;
-    custom.forEach((item, i) => {
-      const key = `custom/${i}`;
+
+  const customFiltered = custom.map((item, i) => ({ item, i, key: `custom/${i}` }))
+    .filter(({ key }) => matchFilter(key));
+  if (customFiltered.length) {
+    const done = customFiltered.filter(({ key }) => state[key]).length;
+    html += `<div class="checklist-cat-section">
+      <div class="checklist-cat-title">⭐ 自訂項目 <span style="font-size:0.72rem;color:#8892a4;font-weight:400">${done}/${customFiltered.length}</span></div>`;
+    customFiltered.forEach(({ item, i, key }) => {
       const chk = state[key] || false;
-      html += `<div class="checklist-item ${chk?'done':''}" id="cl-item-${i}" data-ck="custom/${i}">
+      const domId = `custom-${i}`;
+      html += `<div class="checklist-item ${chk?'done':''}" id="cl-item-${i}">
         <input type="checkbox" ${chk?'checked':''} onchange="toggleCheckItem('custom/${i}',this.checked)">
-        <label onclick="this.previousElementSibling.click()" id="cl-label-${i}" style="flex:1">${esc(item)}</label>
-        <span onclick="editCustomItem(${i})" style="color:#8892a4;cursor:pointer;font-size:0.82rem;padding:0 4px;flex-shrink:0" title="編輯">✏️</span>
-        <span onclick="deleteCustomItem(${i})" style="color:#f87171;cursor:pointer;font-size:0.82rem;padding:0 4px;flex-shrink:0" title="刪除">✕</span>
+        <label id="cl-label-${domId}" onclick="this.previousElementSibling.click()" style="flex:1">${esc(item)}</label>
+        ${makeAssignBtn(key)}
+        <span onclick="editCheckItem('custom/${i}','${item.replace(/'/g,"\\'")}',true,${i})" style="color:#8892a4;cursor:pointer;font-size:0.82rem;padding:0 4px;flex-shrink:0">✏️</span>
+        <span onclick="deleteCustomItem(${i})" style="color:#f87171;cursor:pointer;font-size:0.82rem;padding:0 4px;flex-shrink:0">✕</span>
       </div>`;
     });
     html += '</div>';
   }
+
   document.getElementById('checklistBody').innerHTML = html;
   updateChecklistProgress();
 }
