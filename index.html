@@ -467,6 +467,7 @@ select option { background: #1e2538; color: #e8ecf4; }
     <button onclick="showPage('budget',this)">💼 預算</button>
     <button onclick="showPage('flights',this)">✈️ 航班</button>
     <button onclick="showPage('checklist',this)">✅ 清單</button>
+    <button onclick="showPage('entry',this)">🛂 入境</button>
     <button onclick="openModal('settingsModal')" style="margin-left:auto">⚙️</button>
     <button onclick="leaveTrip()" style="color:#f87171">🚪</button>
   </nav>
@@ -700,6 +701,18 @@ select option { background: #1e2538; color: #e8ecf4; }
       </div>
     </div>
 
+    <!-- 入境資料 -->
+    <div id="entry" class="page">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h2 style="margin:0">🛂 入境資料</h2>
+          <button class="btn btn-primary" style="padding:8px 16px;font-size:0.85rem" onclick="openModal('entryAddModal')">＋ 新增</button>
+        </div>
+        <div id="entryFilterBar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"></div>
+        <div id="entryBody" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+    </div>
+
     <!-- 地圖 -->
     <div id="map" class="page">
       <div class="card">
@@ -844,6 +857,31 @@ select option { background: #1e2538; color: #e8ecf4; }
 
 <!-- Attraction Info -->
 <!-- Checklist Item Picker -->
+<!-- 入境資料新增 modal -->
+<div class="modal-overlay" id="entryAddModal">
+  <div class="modal" style="max-width:480px">
+    <h3 id="entryAddTitle">新增入境資料</h3>
+    <label style="font-size:0.82rem;color:#8892a4;margin-bottom:4px;display:block">標題</label>
+    <input type="text" id="entryDocTitle" placeholder="例：日本VJW入境QRcode" style="margin-bottom:10px">
+    <label style="font-size:0.82rem;color:#8892a4;margin-bottom:4px;display:block">類型</label>
+    <select id="entryDocType" style="margin-bottom:10px;width:100%;padding:8px 12px;border-radius:8px;background:#1a1f30;border:1px solid #2a3040;color:#e8ecf4;font-size:0.9rem" onchange="onEntryTypeChange()">
+      <option value="link">🔗 連結 / QR Code URL</option>
+      <option value="text">📝 文字備註</option>
+      <option value="image">🖼️ 圖片 URL</option>
+    </select>
+    <label style="font-size:0.82rem;color:#8892a4;margin-bottom:4px;display:block" id="entryDocValueLabel">連結網址</label>
+    <input type="text" id="entryDocValue" placeholder="https://..." style="margin-bottom:10px">
+    <label style="font-size:0.82rem;color:#8892a4;margin-bottom:4px;display:block">適用成員</label>
+    <select id="entryDocMember" style="margin-bottom:18px;width:100%;padding:8px 12px;border-radius:8px;background:#1a1f30;border:1px solid #2a3040;color:#e8ecf4;font-size:0.9rem">
+      <option value="">全員</option>
+    </select>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('entryAddModal')">取消</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveEntryDoc()">儲存</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="clPickerModal">
   <div class="modal" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column">
     <h3 id="clPickerTitle">為成員新增項目</h3>
@@ -1078,6 +1116,7 @@ function setupListeners() {
       renderExpenses();
       if (document.getElementById('budget').classList.contains('active')) renderBudget();
       if (document.getElementById('checklist').classList.contains('active')) renderChecklist();
+      if (document.getElementById('entry').classList.contains('active')) renderEntry();
     }, () => setSyncStatus(false))
   );
   unsubscribers.push(
@@ -1117,6 +1156,15 @@ window.openModal = function(id) {
     document.getElementById('tripPeople').value = tripData.people || 1;
     document.getElementById('tripBudget').value = tripData.budget || '';
     document.getElementById('tripDest').value = tripData.dest || '';
+  }
+  if (id === 'entryAddModal') {
+    document.getElementById('entryDocTitle').value = '';
+    document.getElementById('entryDocValue').value = '';
+    document.getElementById('entryDocType').value = 'link';
+    onEntryTypeChange();
+    const sel = document.getElementById('entryDocMember');
+    const members = tripData?.clMembers || [];
+    sel.innerHTML = `<option value="">全員</option>` + members.map(m => `<option value="${m}">${m}</option>`).join('');
   }
 };
 window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
@@ -1161,6 +1209,80 @@ window.showPage = function(id, btn) {
   if (id === 'budget') renderBudget();
   if (id === 'flights') renderFlights();
   if (id === 'checklist') renderChecklist();
+  if (id === 'entry') renderEntry();
+};
+
+// ---- Entry Docs ----
+let entryFilter = '';
+
+function renderEntry() {
+  const docs = tripData?.entryDocs || [];
+  const members = tripData?.clMembers || [];
+
+  // filter bar
+  const bar = document.getElementById('entryFilterBar');
+  bar.innerHTML = `<button class="cl-filter-btn ${entryFilter===''?'active':''}" onclick="setEntryFilter('')">全部</button>`
+    + members.map(m => `<button class="cl-filter-btn ${entryFilter===m?'active':''}" onclick="setEntryFilter('${m}')">${m}</button>`).join('');
+
+  const body = document.getElementById('entryBody');
+  const filtered = entryFilter ? docs.filter(d => !d.member || d.member === entryFilter) : docs;
+
+  if (!filtered.length) {
+    body.innerHTML = `<div style="text-align:center;color:#6b7a8d;padding:32px 0;font-size:0.9rem">尚無入境資料，點右上方「＋ 新增」開始新增</div>`;
+    return;
+  }
+
+  body.innerHTML = filtered.map((d, i) => {
+    const realIdx = docs.indexOf(d);
+    const memberChip = d.member ? `<span class="cl-member-chip" style="font-size:0.72rem;padding:2px 8px">${d.member}</span>` : `<span class="cl-member-chip" style="font-size:0.72rem;padding:2px 8px;background:#1a2035">全員</span>`;
+    let content = '';
+    if (d.type === 'link') {
+      content = `<a href="${d.value}" target="_blank" rel="noopener" style="color:#60a5fa;font-size:0.85rem;word-break:break-all">${d.value}</a>`;
+    } else if (d.type === 'image') {
+      content = `<img src="${d.value}" alt="${d.title}" style="max-width:100%;max-height:240px;border-radius:8px;margin-top:6px" onerror="this.style.display='none'">`;
+    } else {
+      content = `<div style="font-size:0.85rem;color:#c8d0e0;white-space:pre-wrap">${d.value}</div>`;
+    }
+    return `<div style="background:#1a1f30;border:1px solid #2a3040;border-radius:12px;padding:14px 16px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-weight:700;font-size:0.95rem;flex:1">${d.title}</span>
+        ${memberChip}
+        <button onclick="deleteEntryDoc(${realIdx})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:0.85rem;padding:2px 4px">✕</button>
+      </div>
+      ${content}
+    </div>`;
+  }).join('');
+}
+
+window.setEntryFilter = function(m) { entryFilter = m; renderEntry(); };
+
+window.onEntryTypeChange = function() {
+  const type = document.getElementById('entryDocType').value;
+  const labels = { link:'連結網址', text:'備註內容', image:'圖片網址' };
+  const placeholders = { link:'https://...', text:'輸入說明文字...', image:'https://...jpg' };
+  document.getElementById('entryDocValueLabel').textContent = labels[type];
+  document.getElementById('entryDocValue').placeholder = placeholders[type];
+};
+
+window.saveEntryDoc = async function() {
+  const title = document.getElementById('entryDocTitle').value.trim();
+  const value = document.getElementById('entryDocValue').value.trim();
+  if (!title || !value) { showToast('請填寫標題與內容'); return; }
+  const newDoc = {
+    title,
+    type: document.getElementById('entryDocType').value,
+    value,
+    member: document.getElementById('entryDocMember').value,
+  };
+  const cur = [...(tripData?.entryDocs || []), newDoc];
+  await setDoc(doc(db, 'trips', tripId), { entryDocs: cur }, { merge: true });
+  closeModal('entryAddModal');
+};
+
+window.deleteEntryDoc = async function(idx) {
+  const cur = [...(tripData?.entryDocs || [])];
+  cur.splice(idx, 1);
+  await setDoc(doc(db, 'trips', tripId), { entryDocs: cur }, { merge: true });
 };
 
 // ---- Itinerary ----
