@@ -765,6 +765,12 @@ select option { background: #1e2538; color: #e8ecf4; }
     <div class="form-row">
       <div class="form-group" style="flex:2"><label>目的地</label><input type="text" id="tripDest" placeholder="例：日本、韓國..."></div>
     </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Gemini API Key <span style="font-size:0.75rem;color:#8892a4;font-weight:400">（拍照辨識收據所需，<a href="https://aistudio.google.com/apikey" target="_blank" style="color:#c084fc">免費申請</a>）</span></label>
+        <input type="password" id="geminiApiKey" placeholder="AIza..." autocomplete="off">
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('settingsModal')">取消</button>
       <button class="btn btn-primary" onclick="saveSettings()">儲存</button>
@@ -1179,6 +1185,7 @@ window.openModal = function(id) {
     document.getElementById('tripPeople').value = tripData.people || 1;
     document.getElementById('tripBudget').value = tripData.budget || '';
     document.getElementById('tripDest').value = tripData.dest || '';
+    document.getElementById('geminiApiKey').value = localStorage.getItem('geminiApiKey') || '';
   }
   if (id === 'entryAddModal') {
     entryEditIdx = null;
@@ -1208,6 +1215,9 @@ window.saveSettings = async function() {
     budget: parseFloat(document.getElementById('tripBudget').value) || 0,
     dest: document.getElementById('tripDest').value
   }, { merge: true });
+  const geminiKey = document.getElementById('geminiApiKey').value.trim();
+  if (geminiKey) localStorage.setItem('geminiApiKey', geminiKey);
+  else localStorage.removeItem('geminiApiKey');
   closeModal('settingsModal');
   showToast('設定已儲存');
 };
@@ -1666,24 +1676,55 @@ function setScanStatus(msg, err) {
 
 window.scanReceipt = async function() {
   if (!photoBase64) return;
+  const apiKey = localStorage.getItem('geminiApiKey');
+  if (!apiKey) {
+    setScanStatus('❌ 請先在 ⚙️ 設定中填入 Gemini API Key（<a href="https://aistudio.google.com/apikey" target="_blank" style="color:#c084fc">免費申請</a>）', true);
+    return;
+  }
   const btn = document.getElementById('scanBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 辨識中...';
   setScanStatus('<span class="spinner"></span> 正在分析圖片...', false);
   document.getElementById('scanResults').style.display = 'none';
 
-  try {
-    const res = await fetch('/.netlify/functions/scan-receipt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: photoBase64, mimeType: photoMediaType })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  const prompt = `分析這張收據或帳單圖片，以JSON格式回傳以下資訊（只回傳JSON，不要其他文字）：
+{
+  "currency": "貨幣代碼（JPY/TWD/USD/KRW/EUR等）",
+  "items": [
+    {
+      "name_orig": "收據上的原文名稱",
+      "name_zh": "翻譯成繁體中文的名稱",
+      "amount": 數字金額（不含貨幣符號）,
+      "category": "food 或 transport 或 hotel 或 attraction 或 shopping 或 other"
+    }
+  ],
+  "note": "備註（可選，例如小計/稅金說明）"
+}
+如果無法辨識，回傳 {"error":"原因"}。`;
 
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-      .replace(/^```json\n?/, '').replace(/\n?```$/, '') || '{}';
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { text: prompt },
+            { inline_data: { mime_type: photoMediaType, data: photoBase64 } }
+          ]}],
+          generationConfig: { temperature: 0.1 }
+        })
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = data.error?.message || `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+    const raw = (data.candidates?.[0]?.content?.parts?.[0]?.text || '')
+      .trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
     const parsed = JSON.parse(raw);
-    if (parsed.error) { setScanStatus(`❌ ${parsed.error}`, true); return; }
+    if (parsed.error) { setScanStatus(`❌ ${parsed.error}`, true); btn.disabled = false; btn.innerHTML = '🔍 重新辨識'; return; }
     if (parsed.currency) {
       const sel = document.getElementById('expCurrency');
       for (const o of sel.options) if (o.value === parsed.currency) { sel.value = parsed.currency; break; }
@@ -1691,8 +1732,9 @@ window.scanReceipt = async function() {
     scanItems = parsed.items || [];
     renderScanItems();
     setScanStatus(`✅ 找到 ${scanItems.length} 個項目${parsed.note ? '・' + parsed.note : ''}`, false);
-  } catch(e) { setScanStatus(`❌ ${e.message}`, true); }
-
+  } catch(e) {
+    setScanStatus(`❌ ${e.message}`, true);
+  }
   btn.disabled = false; btn.innerHTML = '🔍 重新辨識';
 };
 
