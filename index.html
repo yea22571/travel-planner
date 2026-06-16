@@ -865,12 +865,30 @@ select option { background: #1e2538; color: #e8ecf4; }
     <input type="text" id="entryDocTitle" placeholder="例：日本VJW入境QRcode" style="margin-bottom:10px">
     <label style="font-size:0.82rem;color:#8892a4;margin-bottom:4px;display:block">類型</label>
     <select id="entryDocType" style="margin-bottom:10px;width:100%;padding:8px 12px;border-radius:8px;background:#1a1f30;border:1px solid #2a3040;color:#e8ecf4;font-size:0.9rem" onchange="onEntryTypeChange()">
-      <option value="link">🔗 連結 / QR Code URL</option>
+      <option value="upload">🖼️ 上傳圖片</option>
+      <option value="link">🔗 連結</option>
       <option value="text">📝 文字備註</option>
-      <option value="image">🖼️ 圖片 URL</option>
     </select>
-    <label style="font-size:0.82rem;color:#8892a4;margin-bottom:4px;display:block" id="entryDocValueLabel">連結網址</label>
-    <input type="text" id="entryDocValue" placeholder="https://..." style="margin-bottom:10px">
+
+    <!-- 上傳區 -->
+    <div id="entryUploadArea" style="margin-bottom:10px">
+      <input type="file" id="entryDocFile" accept="image/*" style="display:none" onchange="onEntryFileChange(event)">
+      <div id="entryDropZone" onclick="document.getElementById('entryDocFile').click()"
+        style="border:2px dashed #3a4560;border-radius:10px;padding:24px;text-align:center;cursor:pointer;color:#8892a4;font-size:0.85rem;transition:border-color 0.2s"
+        ondragover="event.preventDefault();this.style.borderColor='#e8526a'"
+        ondragleave="this.style.borderColor='#3a4560'"
+        ondrop="onEntryDrop(event)">
+        📁 點擊或拖曳圖片到此處
+      </div>
+      <img id="entryPreviewImg" src="" alt="" style="display:none;max-width:100%;max-height:200px;border-radius:8px;margin-top:8px;object-fit:contain">
+    </div>
+
+    <!-- 連結/文字輸入區 -->
+    <div id="entryTextArea" style="display:none;margin-bottom:10px">
+      <label style="font-size:0.82rem;color:#8892a4;margin-bottom:4px;display:block" id="entryDocValueLabel">連結網址</label>
+      <input type="text" id="entryDocValue" placeholder="https://...">
+    </div>
+
     <label style="font-size:0.82rem;color:#8892a4;margin-bottom:4px;display:block">適用成員</label>
     <select id="entryDocMember" style="margin-bottom:18px;width:100%;padding:8px 12px;border-radius:8px;background:#1a1f30;border:1px solid #2a3040;color:#e8ecf4;font-size:0.9rem">
       <option value="">全員</option>
@@ -1160,7 +1178,12 @@ window.openModal = function(id) {
   if (id === 'entryAddModal') {
     document.getElementById('entryDocTitle').value = '';
     document.getElementById('entryDocValue').value = '';
-    document.getElementById('entryDocType').value = 'link';
+    document.getElementById('entryDocType').value = 'upload';
+    entryUploadBase64 = null;
+    document.getElementById('entryPreviewImg').style.display = 'none';
+    document.getElementById('entryPreviewImg').src = '';
+    document.getElementById('entryDropZone').textContent = '📁 點擊或拖曳圖片到此處';
+    document.getElementById('entryDocFile').value = '';
     onEntryTypeChange();
     const sel = document.getElementById('entryDocMember');
     const members = tripData?.clMembers || [];
@@ -1258,22 +1281,63 @@ window.setEntryFilter = function(m) { entryFilter = m; renderEntry(); };
 
 window.onEntryTypeChange = function() {
   const type = document.getElementById('entryDocType').value;
-  const labels = { link:'連結網址', text:'備註內容', image:'圖片網址' };
-  const placeholders = { link:'https://...', text:'輸入說明文字...', image:'https://...jpg' };
-  document.getElementById('entryDocValueLabel').textContent = labels[type];
-  document.getElementById('entryDocValue').placeholder = placeholders[type];
+  document.getElementById('entryUploadArea').style.display = type === 'upload' ? 'block' : 'none';
+  document.getElementById('entryTextArea').style.display = type !== 'upload' ? 'block' : 'none';
+  if (type === 'link') {
+    document.getElementById('entryDocValueLabel').textContent = '連結網址';
+    document.getElementById('entryDocValue').placeholder = 'https://...';
+  } else if (type === 'text') {
+    document.getElementById('entryDocValueLabel').textContent = '備註內容';
+    document.getElementById('entryDocValue').placeholder = '輸入說明文字...';
+  }
+};
+
+let entryUploadBase64 = null;
+
+function readFileAsBase64(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = e => res(e.target.result);
+    reader.onerror = rej;
+    reader.readAsDataURL(file);
+  });
+}
+
+window.onEntryFileChange = async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  entryUploadBase64 = await readFileAsBase64(file);
+  const img = document.getElementById('entryPreviewImg');
+  img.src = entryUploadBase64;
+  img.style.display = 'block';
+  document.getElementById('entryDropZone').textContent = '✅ ' + file.name;
+};
+
+window.onEntryDrop = async function(e) {
+  e.preventDefault();
+  document.getElementById('entryDropZone').style.borderColor = '#3a4560';
+  const file = e.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  entryUploadBase64 = await readFileAsBase64(file);
+  const img = document.getElementById('entryPreviewImg');
+  img.src = entryUploadBase64;
+  img.style.display = 'block';
+  document.getElementById('entryDropZone').textContent = '✅ ' + file.name;
 };
 
 window.saveEntryDoc = async function() {
   const title = document.getElementById('entryDocTitle').value.trim();
-  const value = document.getElementById('entryDocValue').value.trim();
-  if (!title || !value) { showToast('請填寫標題與內容'); return; }
-  const newDoc = {
-    title,
-    type: document.getElementById('entryDocType').value,
-    value,
-    member: document.getElementById('entryDocMember').value,
-  };
+  const type = document.getElementById('entryDocType').value;
+  if (!title) { showToast('請填寫標題'); return; }
+  let value;
+  if (type === 'upload') {
+    if (!entryUploadBase64) { showToast('請選擇圖片'); return; }
+    value = entryUploadBase64;
+  } else {
+    value = document.getElementById('entryDocValue').value.trim();
+    if (!value) { showToast('請填寫內容'); return; }
+  }
+  const newDoc = { title, type: type === 'upload' ? 'image' : type, value, member: document.getElementById('entryDocMember').value };
   const cur = [...(tripData?.entryDocs || []), newDoc];
   await setDoc(doc(db, 'trips', tripId), { entryDocs: cur }, { merge: true });
   closeModal('entryAddModal');
