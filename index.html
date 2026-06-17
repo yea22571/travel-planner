@@ -1704,30 +1704,31 @@ window.scanReceipt = async function() {
 }
 如果無法辨識，回傳 {"error":"原因"}。`;
 
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'google/gemma-4-31b-it:free',
-        messages: [{
-          role: 'user',
-          content: [
+  const MODELS = ['google/gemma-4-31b-it:free', 'google/gemma-4-26b-a4b-it:free', 'meta-llama/llama-4-scout:free'];
+  let data, lastErr;
+  for (const model of MODELS) {
+    try {
+      setScanStatus(`<span class="spinner"></span> 分析中（${model.split('/')[1]}）...`, false);
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: [
             { type: 'text', text: prompt },
             { type: 'image_url', image_url: { url: `data:${photoMediaType};base64,${photoBase64}` } }
-          ]
-        }],
-        temperature: 0.1
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      const msg = data.error?.message || `HTTP ${res.status}`;
-      throw new Error(msg);
-    }
+          ]}],
+          temperature: 0.1
+        })
+      });
+      data = await res.json();
+      if (res.ok && data.choices?.[0]?.message?.content) break;
+      lastErr = data.error?.message || `HTTP ${res.status}`;
+      data = null;
+    } catch(e) { lastErr = e.message; data = null; }
+  }
+  try {
+    if (!data) throw new Error(lastErr || '所有模型均失敗');
     const raw = (data.choices?.[0]?.message?.content || '')
       .trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
     const parsed = JSON.parse(raw);
