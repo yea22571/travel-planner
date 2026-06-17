@@ -1706,9 +1706,7 @@ window.scanReceipt = async function() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://yea22571.github.io/travel-planner/',
-        'X-Title': 'Travel Planner'
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: 'google/gemini-2.0-flash-exp:free',
