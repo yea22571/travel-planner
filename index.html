@@ -239,6 +239,12 @@ select option { background: #1e2538; color: #e8ecf4; }
 .exp-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .exp-info { flex: 1; min-width: 0; }
 .exp-title { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #e8ecf4; }
+.exp-subitems { padding: 4px 0 4px 26px; border-bottom: 1px solid #1e2538; }
+.exp-subitem { display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; color:#8892a4; padding: 3px 0; gap:8px; }
+.exp-subitem span:first-child { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.exp-subitem span:last-child { flex-shrink:0; color:#aab4c8; }
+.exp-toggle { font-size:0.72rem; padding:2px 7px; color:#c084fc; border:1px solid #c084fc44; border-radius:5px; background:transparent; cursor:pointer; white-space:nowrap; }
+.exp-toggle:hover { background:#c084fc22; }
 .exp-meta { font-size: 0.74rem; color: #6b7a8d; }
 .exp-who { font-size: 0.7rem; background: #2a1a40; color: #c084fc; padding: 1px 6px; border-radius: 10px; margin-left: 4px; }
 .exp-amount { font-weight: 700; font-size: 0.9rem; white-space: nowrap; color: #f0f2f7; }
@@ -565,10 +571,20 @@ select option { background: #1e2538; color: #e8ecf4; }
           </div>
           <div id="scanStatus"></div>
           <div id="scanResults" style="display:none;margin-top:10px">
-            <div style="font-size:0.82rem;color:#c084fc;font-weight:600;margin-bottom:6px">辨識結果（勾選要新增的項目）：</div>
+            <div style="font-size:0.82rem;color:#c084fc;font-weight:600;margin-bottom:6px">辨識結果（可勾選／編輯各項目）：</div>
             <div id="scanItemsList"></div>
+            <div style="margin-top:10px;padding:10px 12px;background:#1a1f2e;border-radius:8px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <label style="font-size:0.8rem;color:#8892a4;flex-shrink:0">發票名稱</label>
+                <input type="text" id="receiptTitle" placeholder="（留空自動命名）" style="flex:1;font-size:0.84rem;padding:4px 8px">
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:0.82rem;color:#8892a4">已勾選 <span id="checkedCount">0</span> 項・合計</span>
+                <span id="checkedTotal" style="font-size:1.05rem;font-weight:700;color:#c084fc">0</span>
+              </div>
+            </div>
             <div style="display:flex;gap:7px;margin-top:8px;flex-wrap:wrap">
-              <button class="btn btn-purple" onclick="addCheckedItems()">＋ 新增勾選項目</button>
+              <button class="btn btn-purple" onclick="addAsOneExpense()">📋 記為一筆消費</button>
               <button class="btn btn-ghost" style="font-size:0.82rem" onclick="selectAll(true)">全選</button>
               <button class="btn btn-ghost" style="font-size:0.82rem" onclick="selectAll(false)">取消全選</button>
             </div>
@@ -1602,10 +1618,20 @@ function renderExpenses() {
         <div class="exp-meta">${e.date||'—'} · ${CAT_LABELS[e.cat]}${e.note?` · ${esc(e.note)}`:''}</div>
       </div>
       <div class="exp-amount">${e.currency} ${e.amount.toLocaleString()}</div>
+      ${e.items?.length ? `<button class="exp-toggle" onclick="toggleSubitems('${e.id}',this)">▶ ${e.items.length}項</button>` : ''}
       <button class="btn btn-ghost" onclick="openEditExpense('${e.id}')">✏️</button>
       <button class="btn btn-danger" onclick="deleteExpense('${e.id}')">刪除</button>
-    </div>`).join('');
+    </div>
+    ${e.items?.length ? `<div class="exp-subitems" id="sub_${e.id}" style="display:none">${e.items.map(it=>`<div class="exp-subitem"><span>${esc(it.name)}</span><span>${e.currency} ${it.amount.toLocaleString()}</span></div>`).join('')}</div>` : ''}`).join('');
 }
+
+window.toggleSubitems = function(id, btn) {
+  const el = document.getElementById(`sub_${id}`);
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? `▶ ${el.children.length}項` : `▼ ${el.children.length}項`;
+};
 
 // ---- Summary ----
 function renderSummary() {
@@ -1800,49 +1826,73 @@ window.scanReceipt = async function() {
   btn.disabled = false; btn.innerHTML = '🔍 重新辨識';
 };
 
+function updateCheckedTotal() {
+  let count = 0, total = 0;
+  const currency = document.getElementById('expCurrency').value;
+  scanItems.forEach((_,i) => {
+    const cb = document.getElementById(`si${i}`);
+    const amt = parseFloat(document.getElementById(`sa${i}`)?.value) || 0;
+    if (cb?.checked) { count++; total += amt; }
+  });
+  document.getElementById('checkedCount').textContent = count;
+  document.getElementById('checkedTotal').textContent = `${currency} ${total.toLocaleString()}`;
+}
+
 function renderScanItems() {
   document.getElementById('scanItemsList').innerHTML = scanItems.map((item,i) => `
     <div class="scan-item">
-      <input type="checkbox" id="si${i}" checked>
+      <input type="checkbox" id="si${i}" checked onchange="updateCheckedTotal()">
       <div class="scan-item-info">
         <div class="scan-item-name"><input type="text" id="sn${i}" value="${esc(item.name_zh)}" style="border:none;background:transparent;font-weight:500;font-size:0.85rem;width:100%;padding:0"></div>
         ${item.name_orig!==item.name_zh ? `<div class="scan-item-orig">原文：${esc(item.name_orig)}</div>` : ''}
       </div>
       <div class="scan-item-controls">
-        <input type="number" id="sa${i}" value="${item.amount}" style="width:80px;text-align:right;font-weight:700;font-size:0.88rem">
+        <input type="number" id="sa${i}" value="${item.amount}" oninput="updateCheckedTotal()" style="width:80px;text-align:right;font-weight:700;font-size:0.88rem">
         <select id="sc${i}" style="font-size:0.74rem;padding:2px 4px;border:1px solid #dde1e7;border-radius:5px">
           ${Object.entries(CAT_LABELS).map(([v,l])=>`<option value="${v}"${item.category===v?' selected':''}>${l}</option>`).join('')}
         </select>
       </div>
     </div>`).join('');
   document.getElementById('scanResults').style.display = 'block';
+  document.getElementById('receiptTitle').value = '';
+  updateCheckedTotal();
 }
 
-window.selectAll = function(v) { scanItems.forEach((_,i)=>{ const c=document.getElementById(`si${i}`); if(c) c.checked=v; }); };
+window.selectAll = function(v) {
+  scanItems.forEach((_,i)=>{ const c=document.getElementById(`si${i}`); if(c) c.checked=v; });
+  updateCheckedTotal();
+};
 
-window.addCheckedItems = async function() {
+window.addAsOneExpense = async function() {
   const date = document.getElementById('expDate').value;
   const currency = document.getElementById('expCurrency').value;
   const thumb = await compressImage(document.getElementById('photoPreview').src);
-  let count = 0;
+  const checkedItems = [];
   for (let i=0; i<scanItems.length; i++) {
     const cb = document.getElementById(`si${i}`); if (!cb?.checked) continue;
     const name = document.getElementById(`sn${i}`).value.trim();
     const amt = parseFloat(document.getElementById(`sa${i}`).value);
     const cat = document.getElementById(`sc${i}`).value;
     if (!name||isNaN(amt)||amt<=0) continue;
-    await addDoc(collection(db, 'trips', tripId, 'expenses'), {
-      date, cat, currency, title: name, amount: amt,
-      note: '（收據辨識）', receiptThumb: thumb,
-      createdAt: serverTimestamp()
-    });
-    count++;
+    checkedItems.push({ name, amount: amt, category: cat });
   }
-  if (!count) { showToast('請至少勾選一個項目'); return; }
+  if (!checkedItems.length) { showToast('請至少勾選一個項目'); return; }
+  const total = checkedItems.reduce((s,it)=>s+it.amount, 0);
+  const catCount = {};
+  checkedItems.forEach(it => { catCount[it.category]=(catCount[it.category]||0)+1; });
+  const cat = Object.entries(catCount).sort((a,b)=>b[1]-a[1])[0][0];
+  const titleInput = document.getElementById('receiptTitle').value.trim();
+  const title = titleInput || (checkedItems.length===1 ? checkedItems[0].name : `收據明細（${checkedItems.length}項）`);
+  await addDoc(collection(db, 'trips', tripId, 'expenses'), {
+    date, cat, currency, title, amount: total,
+    items: checkedItems,
+    note: '（收據辨識）', receiptThumb: thumb,
+    createdAt: serverTimestamp()
+  });
   clearPhoto();
   document.getElementById('scanResults').style.display = 'none';
   document.getElementById('scanStatus').style.display = 'none';
-  showToast(`✅ 已新增 ${count} 筆消費`);
+  showToast(`✅ 已記入 ${currency} ${total.toLocaleString()}（${checkedItems.length}項明細）`);
 };
 
 function compressImage(src, size=100, q=0.6) {
