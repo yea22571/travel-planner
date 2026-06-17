@@ -1689,20 +1689,21 @@ window.scanReceipt = async function() {
   setScanStatus('<span class="spinner"></span> 正在分析圖片...', false);
   document.getElementById('scanResults').style.display = 'none';
 
-  const prompt = `你是一位專業的日文收據翻譯員。仔細辨識這張收據或帳單圖片中的所有消費項目，以JSON格式回傳（只回傳JSON，不要其他文字）：
+  const prompt = `你是一位專業的日文收據翻譯員。仔細辨識這張收據或帳單圖片，以JSON格式回傳（只回傳JSON，不要其他文字）：
 {
   "currency": "貨幣代碼（JPY/TWD/USD/KRW/EUR等）",
+  "total": 收據上的稅後總金額（純數字），
   "items": [
     {
       "name_orig": "收據上的完整原文名稱",
       "name_zh": "精準的繁體中文翻譯（保留品牌名、型號；例：紳士靴→男士皮鞋、婦人靴→女士皮鞋、ラーメン→拉麵、牛丼→牛肉蓋飯、電車→電車票、タクシー→計程車）",
-      "amount": 數字金額（純數字，不含¥或,符號）,
+      "amount": 該項目含稅金額（純數字，不含¥或,符號）,
       "category": "food 或 transport 或 hotel 或 attraction 或 shopping 或 other"
     }
   ],
   "note": "稅金或合計說明（可選）"
 }
-注意：只列出實際購買的商品/服務項目，不要包含小計、稅金、合計行。如果無法辨識，回傳 {"error":"原因"}。`;
+注意：items 的 amount 加總必須等於 total。只列出實際商品/服務，不含小計/稅金/合計行本身。如果無法辨識，回傳 {"error":"原因"}。`;
 
   // 壓縮圖片到最大 800px、品質 0.7，避免超過 API 大小限制
   const compressedBase64 = await new Promise(res => {
@@ -1752,6 +1753,7 @@ window.scanReceipt = async function() {
       for (const o of sel.options) if (o.value === parsed.currency) { sel.value = parsed.currency; break; }
     }
     scanItems = parsed.items || [];
+    const receiptTotal = parsed.total ? parseFloat(parsed.total) : null;
     renderScanItems();
     setScanStatus(`✅ 找到 ${scanItems.length} 個項目${parsed.note ? '・' + parsed.note : ''}，翻譯優化中...`, false);
     // 用 MyMemory 二次翻譯日文原文，提升準確度
@@ -1767,7 +1769,31 @@ window.scanReceipt = async function() {
         }
       } catch(e) {}
     }));
-    setScanStatus(`✅ 找到 ${scanItems.length} 個項目${parsed.note ? '・' + parsed.note : ''}`, false);
+    // 驗算：比較各項加總與收據總計
+    const itemSum = scanItems.reduce((s, it) => s + (parseFloat(it.amount) || 0), 0);
+    let verifyMsg = '';
+    if (receiptTotal && Math.abs(itemSum - receiptTotal) > 0.5) {
+      const diff = (receiptTotal - itemSum).toFixed(0);
+      verifyMsg = ` ⚠️ 收據合計 ${receiptTotal.toLocaleString()} 但項目加總 ${Math.round(itemSum).toLocaleString()}（差 ${diff > 0 ? '+' : ''}${diff}），請手動校正紅色金額`;
+      // 標示金額可能有誤的項目（差距比例最大的）
+      if (scanItems.length > 0) {
+        const avgExpected = receiptTotal / scanItems.length;
+        scanItems.forEach((item, i) => {
+          const amt = parseFloat(item.amount) || 0;
+          const el = document.getElementById(`sa${i}`);
+          if (el) {
+            // 若某項金額與平均差距超過 80%，標紅提示
+            const ratio = Math.abs(amt - avgExpected) / (avgExpected || 1);
+            el.style.borderColor = ratio > 0.8 ? '#f87171' : '';
+            el.style.color = ratio > 0.8 ? '#dc2626' : '';
+            el.title = ratio > 0.8 ? '⚠️ 金額可能有誤，請確認' : '';
+          }
+        });
+      }
+    } else if (receiptTotal) {
+      verifyMsg = ` ✓ 金額驗算正確（合計 ${receiptTotal.toLocaleString()}）`;
+    }
+    setScanStatus(`✅ 找到 ${scanItems.length} 個項目${parsed.note ? '・' + parsed.note : ''}${verifyMsg}`, !verifyMsg.includes('✓') && !!verifyMsg);
   } catch(e) {
     setScanStatus(`❌ ${e.message}`, true);
   }
