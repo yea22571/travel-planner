@@ -1689,20 +1689,20 @@ window.scanReceipt = async function() {
   setScanStatus('<span class="spinner"></span> 正在分析圖片...', false);
   document.getElementById('scanResults').style.display = 'none';
 
-  const prompt = `分析這張收據或帳單圖片，以JSON格式回傳以下資訊（只回傳JSON，不要其他文字）：
+  const prompt = `你是一位專業的日文收據翻譯員。仔細辨識這張收據或帳單圖片中的所有消費項目，以JSON格式回傳（只回傳JSON，不要其他文字）：
 {
   "currency": "貨幣代碼（JPY/TWD/USD/KRW/EUR等）",
   "items": [
     {
-      "name_orig": "收據上的原文名稱",
-      "name_zh": "翻譯成繁體中文的名稱",
-      "amount": 數字金額（不含貨幣符號）,
+      "name_orig": "收據上的完整原文名稱",
+      "name_zh": "精準的繁體中文翻譯（保留品牌名、型號；例：紳士靴→男士皮鞋、婦人靴→女士皮鞋、ラーメン→拉麵、牛丼→牛肉蓋飯、電車→電車票、タクシー→計程車）",
+      "amount": 數字金額（純數字，不含¥或,符號）,
       "category": "food 或 transport 或 hotel 或 attraction 或 shopping 或 other"
     }
   ],
-  "note": "備註（可選，例如小計/稅金說明）"
+  "note": "稅金或合計說明（可選）"
 }
-如果無法辨識，回傳 {"error":"原因"}。`;
+注意：只列出實際購買的商品/服務項目，不要包含小計、稅金、合計行。如果無法辨識，回傳 {"error":"原因"}。`;
 
   // 壓縮圖片到最大 800px、品質 0.7，避免超過 API 大小限制
   const compressedBase64 = await new Promise(res => {
@@ -1753,6 +1753,20 @@ window.scanReceipt = async function() {
     }
     scanItems = parsed.items || [];
     renderScanItems();
+    setScanStatus(`✅ 找到 ${scanItems.length} 個項目${parsed.note ? '・' + parsed.note : ''}，翻譯優化中...`, false);
+    // 用 MyMemory 二次翻譯日文原文，提升準確度
+    await Promise.all(scanItems.map(async (item, i) => {
+      if (!item.name_orig || item.name_orig === item.name_zh) return;
+      try {
+        const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(item.name_orig)}&langpair=ja|zh-TW`);
+        const d = await r.json();
+        if (d.responseStatus === 200 && d.responseData?.translatedText) {
+          item.name_zh = d.responseData.translatedText;
+          const el = document.getElementById(`sn${i}`);
+          if (el) el.value = item.name_zh;
+        }
+      } catch(e) {}
+    }));
     setScanStatus(`✅ 找到 ${scanItems.length} 個項目${parsed.note ? '・' + parsed.note : ''}`, false);
   } catch(e) {
     setScanStatus(`❌ ${e.message}`, true);
