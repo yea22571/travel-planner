@@ -1704,6 +1704,20 @@ window.scanReceipt = async function() {
 }
 如果無法辨識，回傳 {"error":"原因"}。`;
 
+  // 壓縮圖片到最大 800px、品質 0.7，避免超過 API 大小限制
+  const compressedBase64 = await new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) { if (w > h) { h = Math.round(h * MAX / w); w = MAX; } else { w = Math.round(w * MAX / h); h = MAX; } }
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      res(cv.toDataURL('image/jpeg', 0.7).split(',')[1]);
+    };
+    img.src = `data:${photoMediaType};base64,${photoBase64}`;
+  });
+
   const MODELS = ['google/gemma-4-31b-it:free', 'google/gemma-4-26b-a4b-it:free', 'meta-llama/llama-4-scout:free'];
   let data, lastErr;
   for (const model of MODELS) {
@@ -1716,7 +1730,7 @@ window.scanReceipt = async function() {
           model,
           messages: [{ role: 'user', content: [
             { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: `data:${photoMediaType};base64,${photoBase64}` } }
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${compressedBase64}` } }
           ]}],
           temperature: 0.1
         })
