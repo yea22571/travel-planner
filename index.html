@@ -1702,26 +1702,32 @@ window.scanReceipt = async function() {
 如果無法辨識，回傳 {"error":"原因"}。`;
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          contents: [{ parts: [
-            { text: prompt },
-            { inline_data: { mime_type: photoMediaType, data: photoBase64 } }
-          ]}],
-          generationConfig: { temperature: 0.1 }
-        })
-      }
-    );
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://yea22571.github.io/travel-planner/',
+        'X-Title': 'Travel Planner'
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash-exp:free',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: `data:${photoMediaType};base64,${photoBase64}` } }
+          ]
+        }],
+        temperature: 0.1
+      })
+    });
     const data = await res.json();
     if (!res.ok) {
       const msg = data.error?.message || `HTTP ${res.status}`;
       throw new Error(msg);
     }
-    const raw = (data.candidates?.[0]?.content?.parts?.[0]?.text || '')
+    const raw = (data.choices?.[0]?.message?.content || '')
       .trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
     const parsed = JSON.parse(raw);
     if (parsed.error) { setScanStatus(`❌ ${parsed.error}`, true); btn.disabled = false; btn.innerHTML = '🔍 重新辨識'; return; }
