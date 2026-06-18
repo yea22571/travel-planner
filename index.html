@@ -1082,17 +1082,7 @@ select option { background: #1e2538; color: #e8ecf4; }
       </div>
       <div class="form-group" style="flex:1">
         <label>類別</label>
-        <select id="meCat" style="width:100%;padding:8px 10px;border-radius:8px;background:#1a1f30;border:1px solid #2a3040;color:#e8ecf4;font-size:0.88rem">
-          <option value="拉麵">🍜 拉麵</option>
-          <option value="壽司">🍣 壽司</option>
-          <option value="燒肉">🥩 燒肉</option>
-          <option value="甜點">🍡 甜點／咖啡</option>
-          <option value="便利商店">🏪 便利商店</option>
-          <option value="居酒屋">🍶 居酒屋</option>
-          <option value="定食">🍱 定食</option>
-          <option value="海鮮">🦐 海鮮</option>
-          <option value="其他">🍽️ 其他</option>
-        </select>
+        <select id="meCat" style="width:100%;padding:8px 10px;border-radius:8px;background:#1a1f30;border:1px solid #2a3040;color:#e8ecf4;font-size:0.88rem" onchange="onMeCatChange(this)"></select>
       </div>
     </div>
     <div class="form-row">
@@ -1627,6 +1617,35 @@ window.deleteMustBuy = async function(idx) {
 // ---- Must Eat ----
 const ME_CATS = ['拉麵','壽司','燒肉','甜點','便利商店','居酒屋','定食','海鮮','其他'];
 const ME_CAT_ICON = {拉麵:'🍜',壽司:'🍣',燒肉:'🥩',甜點:'🍡',便利商店:'🏪',居酒屋:'🍶',定食:'🍱',海鮮:'🦐',其他:'🍽️'};
+
+function populateMeCatSelect(currentVal) {
+  const custom = tripData?.mustEatCustomCats || [];
+  const all = [...ME_CATS, ...custom.filter(c => !ME_CATS.includes(c))];
+  const sel = document.getElementById('meCat');
+  if (!sel) return;
+  sel.innerHTML = all.map(c =>
+    `<option value="${c}"${currentVal===c?' selected':''}>${ME_CAT_ICON[c]||'🏷️'} ${c}</option>`
+  ).join('') + `<option value="__add__" style="color:#c084fc">＋ 新增類別...</option>`;
+}
+
+window.onMeCatChange = async function(sel) {
+  if (sel.value !== '__add__') return;
+  const name = prompt('新類別名稱：');
+  if (!name || !name.trim()) { sel.value = (tripData?.mustEatCustomCats||[]).length ? sel.options[0].value : '拉麵'; return; }
+  const newCat = name.trim();
+  const custom = [...(tripData?.mustEatCustomCats || [])];
+  if (!custom.includes(newCat) && !ME_CATS.includes(newCat)) {
+    custom.push(newCat);
+    await setDoc(doc(db,'trips',tripId), { mustEatCustomCats: custom }, { merge: true });
+  }
+  populateMeCatSelect(newCat);
+};
+
+window.deleteMustEatCat = async function(cat) {
+  const custom = (tripData?.mustEatCustomCats || []).filter(c => c !== cat);
+  await setDoc(doc(db,'trips',tripId), { mustEatCustomCats: custom }, { merge: true });
+  renderMustEat();
+};
 const ME_RESERVE_ICON = {不需要:'🚶',可預約:'📅',建議預約:'⭐',需預約:'🔒'};
 let mustEatCatFilter = '', mustEatEditIdx = null;
 
@@ -1695,7 +1714,7 @@ window.openMustEatModal = function(idx=null) {
   const item = idx!==null ? (tripData?.mustEatItems||[])[idx] : null;
   document.getElementById('meName').value = item?.name || '';
   document.getElementById('meDish').value = item?.dish || '';
-  document.getElementById('meCat').value = item?.category || '拉麵';
+  populateMeCatSelect(item?.category || '拉麵');
   document.getElementById('mePriceRange').value = item?.priceRange || '';
   document.getElementById('meReservation').value = item?.reservation || '不需要';
   document.getElementById('meChildFriendly').value = item?.childFriendly || '';
