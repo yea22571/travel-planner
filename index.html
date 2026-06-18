@@ -1036,12 +1036,16 @@ select option { background: #1e2538; color: #e8ecf4; }
       <label>地點／地址</label>
       <input type="text" id="mbLocation" placeholder="例：新宿藥妝街、秋葉原電器城">
     </div>
-    <div class="form-row" style="align-items:center">
-      <div class="form-group" style="flex:1">
-        <label>參考連結</label>
-        <input type="url" id="mbLink" placeholder="https://...">
+    <div style="background:#12172a;border:1px dashed #3a4560;border-radius:10px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-size:0.78rem;color:#c084fc;font-weight:600;margin-bottom:6px">🔗 貼入連結自動帶入資訊</div>
+      <div style="display:flex;gap:7px">
+        <input type="url" id="mbLink" placeholder="商品頁面 / 官網 / 藥妝比價..." style="flex:1;font-size:0.84rem">
+        <button id="mbAutoFillBtn" class="btn btn-purple" style="white-space:nowrap;font-size:0.82rem;padding:7px 12px" onclick="autoFillBuyFromUrl()">🔍 自動帶入</button>
       </div>
-      <div class="form-group" style="flex-shrink:0;padding-top:18px">
+      <div id="mbAutoFillStatus" style="font-size:0.75rem;color:#6b7a8d;margin-top:5px;display:none"></div>
+    </div>
+    <div class="form-row" style="align-items:center;margin-bottom:6px">
+      <div class="form-group" style="flex-shrink:0">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
           <input type="checkbox" id="mbTaxFree" style="width:16px;height:16px"> 免稅商品
         </label>
@@ -1062,6 +1066,15 @@ select option { background: #1e2538; color: #e8ecf4; }
 <div class="modal-overlay" id="mustEatModal">
   <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto">
     <h3 id="mustEatModalTitle">新增必吃美食</h3>
+    <!-- 連結自動帶入 -->
+    <div style="background:#12172a;border:1px dashed #3a4560;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:0.78rem;color:#c084fc;font-weight:600;margin-bottom:6px">🔗 貼入連結自動帶入資訊</div>
+      <div style="display:flex;gap:7px">
+        <input type="url" id="meLink" placeholder="食べログ / Google Maps / 餐廳官網..." style="flex:1;font-size:0.84rem">
+        <button id="meAutoFillBtn" class="btn btn-purple" style="white-space:nowrap;font-size:0.82rem;padding:7px 12px" onclick="autoFillEatFromUrl()">🔍 自動帶入</button>
+      </div>
+      <div id="meAutoFillStatus" style="font-size:0.75rem;color:#6b7a8d;margin-top:5px;display:none"></div>
+    </div>
     <div class="form-row">
       <div class="form-group" style="flex:2">
         <label>餐廳名稱 <span style="color:#e8526a">*</span></label>
@@ -1103,14 +1116,22 @@ select option { background: #1e2538; color: #e8ecf4; }
         </select>
       </div>
       <div class="form-group" style="flex:1">
-        <label>推薦來源／評分</label>
-        <input type="text" id="meRating" placeholder="例：食べログ 3.8、IG推薦">
+        <label>兒童友善</label>
+        <select id="meChildFriendly" style="width:100%;padding:8px 10px;border-radius:8px;background:#1a1f30;border:1px solid #2a3040;color:#e8ecf4;font-size:0.88rem">
+          <option value="">❓ 不確定</option>
+          <option value="yes">👶 兒童友善</option>
+          <option value="no">🚫 不適合兒童</option>
+        </select>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group" style="flex:1">
+        <label>推薦來源／評分</label>
+        <input type="text" id="meRating" placeholder="例：食べログ 3.8、IG推薦">
+      </div>
+      <div class="form-group" style="flex:1">
         <label>預約連結／電話</label>
-        <input type="text" id="meReserveLink" placeholder="https://tabelog.com/... 或電話">
+        <input type="text" id="meReserveLink" placeholder="https://... 或電話">
       </div>
     </div>
     <div class="form-row">
@@ -1120,16 +1141,12 @@ select option { background: #1e2538; color: #e8ecf4; }
       </div>
       <div class="form-group" style="flex:1">
         <label>定休日</label>
-        <input type="text" id="meClosedDays" placeholder="例：週二、週三">
+        <input type="text" id="meClosedDays" placeholder="例：週二">
       </div>
     </div>
     <div class="form-group">
       <label>地點／地址</label>
       <input type="text" id="meLocation" placeholder="例：東京都新宿區西新宿1-2-3">
-    </div>
-    <div class="form-group">
-      <label>參考連結（食べログ／Google Maps 等）</label>
-      <input type="url" id="meLink" placeholder="https://...">
     </div>
     <div class="form-group">
       <label>備註</label>
@@ -1650,6 +1667,7 @@ function renderMustEat() {
             <span class="wl-badge wl-badge-reserve-${item.reservation||'不需要'}">${ME_RESERVE_ICON[item.reservation]||'🚶'} ${item.reservation||'不需要'}</span>
             ${item.priceRange ? `<span class="wl-badge" style="background:#1e2538;color:#c084fc">💴 ${esc(item.priceRange)}</span>` : ''}
             ${item.rating ? `<span class="wl-badge" style="background:#1e2538;color:#fbbf24">⭐ ${esc(item.rating)}</span>` : ''}
+            ${item.childFriendly==='yes' ? '<span class="wl-badge" style="background:#1a2e1a;color:#4ade80">👶 兒童友善</span>' : item.childFriendly==='no' ? '<span class="wl-badge" style="background:#2e1a1a;color:#f87171">🚫 不適合兒童</span>' : ''}
           </div>
           <div class="wl-meta-row">
             ${item.openHours ? `<span>🕐 ${esc(item.openHours)}</span>` : ''}
@@ -1680,6 +1698,7 @@ window.openMustEatModal = function(idx=null) {
   document.getElementById('meCat').value = item?.category || '拉麵';
   document.getElementById('mePriceRange').value = item?.priceRange || '';
   document.getElementById('meReservation').value = item?.reservation || '不需要';
+  document.getElementById('meChildFriendly').value = item?.childFriendly || '';
   document.getElementById('meReserveLink').value = item?.reserveLink || '';
   document.getElementById('meOpenHours').value = item?.openHours || '';
   document.getElementById('meClosedDays').value = item?.closedDays || '';
@@ -1687,6 +1706,7 @@ window.openMustEatModal = function(idx=null) {
   document.getElementById('meRating').value = item?.rating || '';
   document.getElementById('meLink').value = item?.link || '';
   document.getElementById('meNote').value = item?.note || '';
+  document.getElementById('meAutoFillStatus').style.display = 'none';
   document.getElementById('mustEatModal').classList.add('open');
 };
 
@@ -1699,6 +1719,7 @@ window.saveMustEat = async function() {
     category: document.getElementById('meCat').value,
     priceRange: document.getElementById('mePriceRange').value.trim(),
     reservation: document.getElementById('meReservation').value,
+    childFriendly: document.getElementById('meChildFriendly').value,
     reserveLink: document.getElementById('meReserveLink').value.trim(),
     openHours: document.getElementById('meOpenHours').value.trim(),
     closedDays: document.getElementById('meClosedDays').value.trim(),
@@ -1725,6 +1746,229 @@ window.deleteMustEat = async function(idx) {
   const cur = [...(tripData?.mustEatItems||[])];
   cur.splice(idx,1);
   await setDoc(doc(db,'trips',tripId),{mustEatItems:cur},{merge:true});
+};
+
+// ---- Auto-fill from URL ----
+async function fetchPageHtml(url) {
+  const proxies = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    `https://corsproxy.io/?${encodeURIComponent(url)}`
+  ];
+  for (const proxy of proxies) {
+    try {
+      const res = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
+      if (res.ok) return await res.text();
+    } catch(e) {}
+  }
+  throw new Error('無法讀取頁面，請檢查連結是否正確');
+}
+
+function parseJsonLd(html) {
+  const matches = [...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  for (const [, content] of matches) {
+    try {
+      const json = JSON.parse(content);
+      const items = Array.isArray(json) ? json : [json];
+      for (const item of items) {
+        const type = item['@type'];
+        if (['Restaurant','FoodEstablishment','CafeOrCoffeeShop','BarOrPub','Bakery'].includes(type) ||
+            (Array.isArray(type) && type.some(t => ['Restaurant','FoodEstablishment'].includes(t)))) {
+          return item;
+        }
+      }
+    } catch(e) {}
+  }
+  return null;
+}
+
+function getMetaContent(html, prop) {
+  const m = html.match(new RegExp(`<meta[^>]*(?:property|name)=["']${prop}["'][^>]*content=["']([^"']+)["']`, 'i'))
+           || html.match(new RegExp(`<meta[^>]*content=["']([^"']+)["'][^>]*(?:property|name)=["']${prop}["']`, 'i'));
+  return m ? m[1].trim() : '';
+}
+
+function formatOpeningHours(spec) {
+  if (!spec) return '';
+  const dayMap = {Monday:'一',Tuesday:'二',Wednesday:'三',Thursday:'四',Friday:'五',Saturday:'六',Sunday:'日'};
+  const arr = Array.isArray(spec) ? spec : [spec];
+  return arr.map(s => {
+    const days = (Array.isArray(s.dayOfWeek) ? s.dayOfWeek : [s.dayOfWeek])
+      .map(d => dayMap[d.replace('http://schema.org/','')] || d).join('');
+    return `週${days} ${s.opens||''}–${s.closes||''}`;
+  }).join('　');
+}
+
+async function aiExtractInfo(text, fields, statusEl) {
+  const apiKey = localStorage.getItem('geminiApiKey');
+  if (!apiKey) return null;
+  statusEl.style.display = 'block';
+  statusEl.textContent = '🤖 AI 分析中...';
+  try {
+    const fieldDesc = fields.join('、');
+    const prompt = `從以下網頁文字中提取${fieldDesc}，以JSON格式回傳（找不到填null）：
+${JSON.stringify(Object.fromEntries(fields.map(f => [f, null])))}
+只回傳JSON。
+文字（前3000字）：${text.slice(0,3000)}`;
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
+      body:JSON.stringify({ model:'google/gemma-4-31b-it:free', messages:[{role:'user',content:prompt}], temperature:0.1 })
+    });
+    const data = await res.json();
+    const raw = (data.choices?.[0]?.message?.content||'').trim().replace(/^```json\n?/,'').replace(/\n?```$/,'');
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+
+window.autoFillEatFromUrl = async function() {
+  const url = document.getElementById('meLink').value.trim();
+  if (!url) { showToast('請先填入連結'); return; }
+  const btn = document.getElementById('meAutoFillBtn');
+  const statusEl = document.getElementById('meAutoFillStatus');
+  btn.disabled = true; btn.textContent = '讀取中...';
+  statusEl.style.display = 'block'; statusEl.textContent = '🌐 正在讀取頁面...';
+
+  try {
+    const html = await fetchPageHtml(url);
+    const schema = parseJsonLd(html);
+    const plainText = html.replace(/<style[\s\S]*?<\/style>/gi,'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+    const filled = [];
+
+    // 從 JSON-LD schema 帶入
+    if (schema) {
+      if (schema.name && !document.getElementById('meName').value) {
+        document.getElementById('meName').value = schema.name; filled.push('名稱');
+      }
+      if (schema.openingHoursSpecification) {
+        const oh = formatOpeningHours(schema.openingHoursSpecification);
+        if (oh && !document.getElementById('meOpenHours').value) { document.getElementById('meOpenHours').value = oh; filled.push('營業時間'); }
+      } else if (schema.openingHours) {
+        const oh = Array.isArray(schema.openingHours) ? schema.openingHours.join(' / ') : schema.openingHours;
+        if (!document.getElementById('meOpenHours').value) { document.getElementById('meOpenHours').value = oh; filled.push('營業時間'); }
+      }
+      if (schema.priceRange && !document.getElementById('mePriceRange').value) {
+        document.getElementById('mePriceRange').value = schema.priceRange; filled.push('人均價位');
+      }
+      if (schema.address) {
+        const addr = typeof schema.address === 'string' ? schema.address
+          : [schema.address.addressRegion, schema.address.addressLocality, schema.address.streetAddress].filter(Boolean).join('');
+        if (addr && !document.getElementById('meLocation').value) { document.getElementById('meLocation').value = addr; filled.push('地點'); }
+      }
+      if (schema.telephone && !document.getElementById('meReserveLink').value) {
+        document.getElementById('meReserveLink').value = schema.telephone; filled.push('電話');
+      }
+    }
+
+    // 從 meta tags 補充
+    const ogTitle = getMetaContent(html,'og:title');
+    if (ogTitle && !document.getElementById('meName').value) {
+      document.getElementById('meName').value = ogTitle.replace(/\s*[-|｜–].*/,'').trim(); filled.push('名稱');
+    }
+
+    // 定休日關鍵字搜尋
+    const closedMatch = plainText.match(/定休日[：:\s]*([^\n。.]{2,20})/);
+    if (closedMatch && !document.getElementById('meClosedDays').value) {
+      document.getElementById('meClosedDays').value = closedMatch[1].trim(); filled.push('定休日');
+    }
+
+    // 預約關鍵字
+    if (!document.getElementById('meReservation').value || document.getElementById('meReservation').value === '不需要') {
+      if (/予約必須|要予約|reservation required/i.test(plainText)) {
+        document.getElementById('meReservation').value = '需預約'; filled.push('預約');
+      } else if (/予約推奨|お早めに|recommend.*reserv/i.test(plainText)) {
+        document.getElementById('meReservation').value = '建議預約'; filled.push('預約');
+      } else if (/予約可|予約受付|reserv/i.test(plainText)) {
+        document.getElementById('meReservation').value = '可預約'; filled.push('預約');
+      }
+    }
+
+    // 兒童友善關鍵字
+    if (!document.getElementById('meChildFriendly').value) {
+      const childOk = /お子様|キッズ|子連れ|ファミリー|お子さま|ベビーカー|子供椅子|ハイチェア/i.test(plainText);
+      const childNg = /お断り|お子様はご遠慮|大人のみ|adults only/i.test(plainText);
+      if (childNg) { document.getElementById('meChildFriendly').value = 'no'; filled.push('兒童友善'); }
+      else if (childOk) { document.getElementById('meChildFriendly').value = 'yes'; filled.push('兒童友善'); }
+    }
+
+    // AI fallback（若結構化資料不足）
+    if (filled.length < 2) {
+      const needed = ['name（餐廳名稱）','openHours（營業時間）','closedDays（定休日）','priceRange（人均價位）','childFriendly（兒童友善，true/false/null）','reservation（預約需求：需預約/建議預約/可預約/不需要）'];
+      const info = await aiExtractInfo(plainText, needed, statusEl);
+      if (info) {
+        if (info['name（餐廳名稱）'] && !document.getElementById('meName').value) { document.getElementById('meName').value = info['name（餐廳名稱）']; filled.push('名稱'); }
+        if (info['openHours（營業時間）'] && !document.getElementById('meOpenHours').value) { document.getElementById('meOpenHours').value = info['openHours（營業時間）']; filled.push('營業時間'); }
+        if (info['closedDays（定休日）'] && !document.getElementById('meClosedDays').value) { document.getElementById('meClosedDays').value = info['closedDays（定休日）']; filled.push('定休日'); }
+        if (info['priceRange（人均價位）'] && !document.getElementById('mePriceRange').value) { document.getElementById('mePriceRange').value = info['priceRange（人均價位）']; filled.push('人均價位'); }
+        if (info['childFriendly（兒童友善，true/false/null）'] !== null && !document.getElementById('meChildFriendly').value) {
+          document.getElementById('meChildFriendly').value = info['childFriendly（兒童友善，true/false/null）'] ? 'yes' : 'no'; filled.push('兒童友善');
+        }
+        if (info['reservation（預約需求：需預約/建議預約/可預約/不需要）'] && document.getElementById('meReservation').value === '不需要') {
+          const rv = info['reservation（預約需求：需預約/建議預約/可預約/不需要）'];
+          if (['需預約','建議預約','可預約','不需要'].includes(rv)) { document.getElementById('meReservation').value = rv; filled.push('預約'); }
+        }
+      }
+    }
+
+    if (filled.length) {
+      statusEl.textContent = `✅ 已帶入：${filled.join('、')}`;
+    } else {
+      statusEl.textContent = '⚠️ 未找到結構化資料，請手動填寫（建議使用食べログ連結）';
+    }
+  } catch(e) {
+    statusEl.textContent = `❌ ${e.message}`;
+  }
+  btn.disabled = false; btn.textContent = '🔍 自動帶入';
+};
+
+window.autoFillBuyFromUrl = async function() {
+  const url = document.getElementById('mbLink').value.trim();
+  if (!url) { showToast('請先填入連結'); return; }
+  const btn = document.getElementById('mbAutoFillBtn');
+  const statusEl = document.getElementById('mbAutoFillStatus');
+  btn.disabled = true; btn.textContent = '讀取中...';
+  statusEl.style.display = 'block'; statusEl.textContent = '🌐 正在讀取頁面...';
+
+  try {
+    const html = await fetchPageHtml(url);
+    const filled = [];
+    // og:title → 商品名
+    const ogTitle = getMetaContent(html,'og:title') || getMetaContent(html,'twitter:title');
+    if (ogTitle && !document.getElementById('mbName').value) {
+      document.getElementById('mbName').value = ogTitle.replace(/\s*[-|｜–|【】\[\]].{0,20}$/, '').trim();
+      filled.push('商品名稱');
+    }
+    // 價格：JSON-LD Offer 或 meta
+    const ldMatches = [...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+    for (const [, content] of ldMatches) {
+      try {
+        const json = JSON.parse(content);
+        const items = Array.isArray(json) ? json : [json];
+        for (const item of items) {
+          const offer = item.offers || item.Offers;
+          const price = offer?.price || offer?.[0]?.price;
+          if (price && !document.getElementById('mbPrice').value) {
+            document.getElementById('mbPrice').value = Math.round(parseFloat(String(price).replace(/,/g,'')));
+            filled.push('價格');
+          }
+        }
+      } catch(e) {}
+    }
+    // 若 AI key 可用，補充店鋪名等
+    if (filled.length < 2) {
+      const plainText = html.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+      const info = await aiExtractInfo(plainText, ['productName（商品名稱）','price（價格數字）','shop（品牌或店鋪名）','notes（規格或注意事項）'], statusEl);
+      if (info) {
+        if (info['productName（商品名稱）'] && !document.getElementById('mbName').value) { document.getElementById('mbName').value = info['productName（商品名稱）']; filled.push('商品名稱'); }
+        if (info['price（價格數字）'] && !document.getElementById('mbPrice').value) { document.getElementById('mbPrice').value = info['price（價格數字）']; filled.push('價格'); }
+        if (info['shop（品牌或店鋪名）'] && !document.getElementById('mbShop').value) { document.getElementById('mbShop').value = info['shop（品牌或店鋪名）']; filled.push('品牌'); }
+        if (info['notes（規格或注意事項）'] && !document.getElementById('mbNote').value) { document.getElementById('mbNote').value = info['notes（規格或注意事項）']; filled.push('備註'); }
+      }
+    }
+    statusEl.textContent = filled.length ? `✅ 已帶入：${filled.join('、')}` : '⚠️ 未找到商品資料，請手動填寫';
+  } catch(e) {
+    statusEl.textContent = `❌ ${e.message}`;
+  }
+  btn.disabled = false; btn.textContent = '🔍 自動帶入';
 };
 
 // ---- Entry Docs ----
