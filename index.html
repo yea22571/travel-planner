@@ -278,6 +278,32 @@ select option { background: #1e2538; color: #e8ecf4; }
 .wl-price { font-size:0.82rem; font-weight:700; color:#c084fc; white-space:nowrap; }
 .wl-link-btn { font-size:0.73rem; padding:3px 9px; border-radius:6px; border:1px solid #2a3040; background:#12172a; color:#60a5fa; text-decoration:none; white-space:nowrap; }
 .wl-link-btn:hover { background:#1e2538; }
+/* eSIM */
+.esim-card { background:#1a1f30; border:1px solid #2a3040; border-radius:14px; padding:16px; margin-bottom:12px; }
+.esim-header { display:flex; align-items:flex-start; gap:12px; margin-bottom:12px; }
+.esim-icon { width:48px; height:48px; border-radius:10px; background:linear-gradient(135deg,#1a2e50,#0f1a30); display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex-shrink:0; border:1px solid #2a3040; }
+.esim-title { flex:1; min-width:0; }
+.esim-provider { font-size:1rem; font-weight:700; color:#e8ecf4; }
+.esim-plan { font-size:0.8rem; color:#8892a4; margin-top:2px; }
+.esim-status { font-size:0.7rem; padding:3px 9px; border-radius:10px; font-weight:600; white-space:nowrap; }
+.esim-status-未購買 { background:#2a1a1a; color:#f87171; }
+.esim-status-已購買 { background:#1a2e40; color:#60a5fa; }
+.esim-status-已啟用 { background:#0f2d1a; color:#4ade80; }
+.esim-status-已到期 { background:#2a2a1a; color:#6b7a8d; }
+.esim-qr { width:110px; height:110px; border-radius:10px; object-fit:contain; background:#fff; padding:6px; cursor:zoom-in; flex-shrink:0; border:2px solid #2a3040; }
+.esim-qr-placeholder { width:110px; height:110px; border-radius:10px; border:2px dashed #2a3040; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:#6b7a8d; font-size:0.72rem; cursor:pointer; flex-shrink:0; background:#12172a; text-align:center; }
+.esim-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+.esim-info-item { background:#12172a; border-radius:8px; padding:8px 10px; }
+.esim-info-label { font-size:0.65rem; color:#6b7a8d; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px; }
+.esim-info-value { font-size:0.82rem; color:#c8d0e0; font-weight:500; }
+.esim-apn { background:#0d1420; border:1px solid #1e2538; border-radius:8px; padding:10px 12px; margin-bottom:10px; font-family:monospace; font-size:0.8rem; color:#60a5fa; word-break:break-all; }
+.esim-apn-label { font-size:0.65rem; color:#6b7a8d; font-family:sans-serif; margin-bottom:4px; letter-spacing:0.05em; text-transform:uppercase; }
+.esim-footer { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.esim-member-chip { font-size:0.72rem; padding:2px 9px; border-radius:10px; background:#1a2035; color:#c084fc; }
+.esim-data-bar-wrap { flex:1; min-width:100px; }
+.esim-data-bar { height:5px; background:#1e2538; border-radius:3px; overflow:hidden; margin-top:4px; }
+.esim-data-fill { height:100%; background:linear-gradient(90deg,#4ade80,#22c55e); border-radius:3px; transition:width 0.4s; }
+.esim-data-label { font-size:0.7rem; color:#6b7a8d; }
 .wl-stat-box { flex:1; background:#1a1f30; border:1px solid #2a3040; border-radius:10px; padding:10px 14px; text-align:center; }
 .wl-stat-num { font-size:1.3rem; font-weight:800; }
 .wl-stat-label { font-size:0.72rem; color:#6b7a8d; margin-top:2px; }
@@ -520,6 +546,7 @@ select option { background: #1e2538; color: #e8ecf4; }
     <button onclick="showPage('entry',this)">🛂 入境</button>
     <button onclick="showPage('mustbuy',this)">🛍️ 必買</button>
     <button onclick="showPage('musteat',this)">🍜 必吃</button>
+    <button onclick="showPage('esim',this)">📶 eSIM</button>
     <button onclick="openModal('settingsModal')" style="margin-left:auto">⚙️</button>
     <button onclick="leaveTrip()" style="color:#f87171">🚪</button>
   </nav>
@@ -804,6 +831,18 @@ select option { background: #1e2538; color: #e8ecf4; }
         <div id="mustEatStats" style="display:flex;gap:10px;margin-bottom:12px"></div>
         <div id="mustEatCatFilter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"></div>
         <div id="mustEatBody"></div>
+      </div>
+    </div>
+
+    <!-- eSIM -->
+    <div id="esim" class="page">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <h2 style="margin:0">📶 eSIM 管理</h2>
+          <button class="btn btn-primary" style="padding:8px 16px;font-size:0.85rem" onclick="openEsimModal()">＋ 新增</button>
+        </div>
+        <div id="esimMemberFilter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"></div>
+        <div id="esimBody"></div>
       </div>
     </div>
 
@@ -1177,6 +1216,93 @@ select option { background: #1e2538; color: #e8ecf4; }
   </div>
 </div>
 
+<!-- eSIM Modal -->
+<div class="modal-overlay" id="esimModal">
+  <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto">
+    <h3 id="esimModalTitle">新增 eSIM</h3>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>電信商 / 品牌 <span style="color:#e8526a">*</span></label>
+        <input type="text" id="esimProvider" placeholder="例：Airalo、Klook、AIS、HIS Mobile">
+      </div>
+      <div class="form-group" style="flex:1">
+        <label>狀態</label>
+        <select id="esimStatus" style="width:100%;padding:8px 10px;border-radius:8px;background:#1a1f30;border:1px solid #2a3040;color:#e8ecf4;font-size:0.88rem">
+          <option value="未購買">🛒 未購買</option>
+          <option value="已購買">📦 已購買</option>
+          <option value="已啟用">✅ 已啟用</option>
+          <option value="已到期">⏰ 已到期</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>方案名稱</label>
+        <input type="text" id="esimPlan" placeholder="例：日本 7天 10GB、東北亞 15天無限">
+      </div>
+      <div class="form-group" style="flex:1">
+        <label>適用地區</label>
+        <input type="text" id="esimRegion" placeholder="例：日本、東北亞">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:1">
+        <label>數據量 (GB)</label>
+        <input type="number" id="esimDataGb" placeholder="10" min="0" step="0.1">
+      </div>
+      <div class="form-group" style="flex:1">
+        <label>有效天數</label>
+        <input type="number" id="esimDays" placeholder="7" min="1">
+      </div>
+      <div class="form-group" style="flex:1">
+        <label>費用</label>
+        <input type="text" id="esimPrice" placeholder="NT$300">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:1">
+        <label>啟用日期</label>
+        <input type="date" id="esimActivateDate">
+      </div>
+      <div class="form-group" style="flex:1">
+        <label>到期日期</label>
+        <input type="date" id="esimExpiryDate">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>APN 設定（選填，安裝時參考）</label>
+      <input type="text" id="esimApn" placeholder="例：airalo、mobiledata">
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:1">
+        <label>指派成員</label>
+        <select id="esimMember" style="width:100%;padding:8px 10px;border-radius:8px;background:#1a1f30;border:1px solid #2a3040;color:#e8ecf4;font-size:0.88rem">
+          <option value="">全員</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1">
+        <label>購買 / 管理連結</label>
+        <input type="url" id="esimLink" placeholder="https://...">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>備註</label>
+      <textarea id="esimNote" rows="2" placeholder="安裝步驟、注意事項..." style="resize:vertical;min-height:55px"></textarea>
+    </div>
+    <div class="form-group">
+      <label>QR Code 圖片（掃描安裝用）</label>
+      <input type="file" id="esimQrFile" accept="image/*" style="display:none" onchange="onEsimQrChange(event)">
+      <div class="wl-img-upload" onclick="document.getElementById('esimQrFile').click()">📷 上傳 QR Code 截圖</div>
+      <img id="esimQrPreview" class="wl-img-preview" alt="" style="max-height:180px">
+      <button id="esimQrClear" style="display:none;margin-top:4px;font-size:0.75rem;color:#f87171;background:none;border:none;cursor:pointer" onclick="clearEsimQr()">✕ 移除 QR Code</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('esimModal')">取消</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveEsim()">儲存</button>
+    </div>
+  </div>
+</div>
+
 <!-- 入境圖片 lightbox -->
 <div class="modal-overlay" id="entryLightbox" onclick="closeModal('entryLightbox')" style="background:rgba(0,0,0,0.92);align-items:center;justify-content:center;cursor:zoom-out">
   <img id="entryLightboxImg" src="" alt="" style="max-width:95vw;max-height:92vh;border-radius:10px;object-fit:contain;pointer-events:none">
@@ -1523,6 +1649,7 @@ window.showPage = function(id, btn) {
   if (id === 'entry') renderEntry();
   if (id === 'mustbuy') renderMustBuy();
   if (id === 'musteat') renderMustEat();
+  if (id === 'esim') renderEsim();
 };
 
 // ---- Must Buy ----
@@ -2084,6 +2211,160 @@ window.autoFillBuyFromUrl = async function() {
     statusEl.textContent = `❌ ${e.message}`;
   }
   btn.disabled = false; btn.textContent = '🔍 自動帶入';
+};
+
+// ---- eSIM ----
+let esimEditIdx = null, esimQrData = null, esimMemberFilter = '';
+
+function renderEsim() {
+  const items = tripData?.esimItems || [];
+  const members = tripData?.clMembers || [];
+
+  const filterBar = document.getElementById('esimMemberFilter');
+  filterBar.innerHTML = `<button class="cl-filter-btn ${esimMemberFilter===''?'active':''}" onclick="setEsimFilter('')">全部</button>`
+    + members.map(m => `<button class="cl-filter-btn ${esimMemberFilter===m?'active':''}" onclick="setEsimFilter('${esc(m)}')">${esc(m)}</button>`).join('');
+
+  const list = esimMemberFilter ? items.filter(i => i.member === esimMemberFilter) : items;
+  const body = document.getElementById('esimBody');
+  if (!list.length) {
+    body.innerHTML = `<div style="text-align:center;padding:40px 0;color:#6b7a8d">
+      <div style="font-size:2.5rem;margin-bottom:10px">📶</div>
+      <div style="font-size:0.9rem">尚未新增 eSIM，點右上方「＋ 新增」開始</div>
+    </div>`;
+    return;
+  }
+
+  const STATUS_ICON = { 未購買:'🛒', 已購買:'📦', 已啟用:'✅', 已到期:'⏰' };
+  body.innerHTML = list.map(item => {
+    const realIdx = items.indexOf(item);
+    const hasQr = !!item.qrImg;
+    const dataUsedPct = (item.dataGb && item.dataUsed) ? Math.min(100, Math.round(item.dataUsed / item.dataGb * 100)) : null;
+    const daysLeft = item.expiryDate ? Math.ceil((new Date(item.expiryDate) - new Date()) / 86400000) : null;
+
+    return `<div class="esim-card">
+      <div class="esim-header">
+        <div class="esim-icon">📶</div>
+        <div class="esim-title">
+          <div class="esim-provider">${esc(item.provider)}</div>
+          ${item.plan ? `<div class="esim-plan">${esc(item.plan)}</div>` : ''}
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">
+            <span class="esim-status esim-status-${item.status||'未購買'}">${STATUS_ICON[item.status]||'🛒'} ${item.status||'未購買'}</span>
+            ${item.region ? `<span style="font-size:0.7rem;padding:3px 8px;border-radius:10px;background:#1e2538;color:#8892a4">🌏 ${esc(item.region)}</span>` : ''}
+            ${item.member ? `<span class="esim-member-chip">${esc(item.member)}</span>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          ${hasQr ? `<img class="esim-qr" src="${item.qrImg}" onclick="openWlLightbox('${item.qrImg}')" alt="QR Code">` : `<div class="esim-qr-placeholder" onclick="openEsimModal(${realIdx})"><span style="font-size:1.6rem">📷</span><span>點擊上傳<br>QR Code</span></div>`}
+        </div>
+      </div>
+
+      <div class="esim-info-grid">
+        ${item.dataGb ? `<div class="esim-info-item"><div class="esim-info-label">數據量</div><div class="esim-info-value">${item.dataGb} GB</div></div>` : ''}
+        ${item.days ? `<div class="esim-info-item"><div class="esim-info-label">有效天數</div><div class="esim-info-value">${item.days} 天</div></div>` : ''}
+        ${item.activateDate ? `<div class="esim-info-item"><div class="esim-info-label">啟用日期</div><div class="esim-info-value">${item.activateDate}</div></div>` : ''}
+        ${item.expiryDate ? `<div class="esim-info-item"><div class="esim-info-label">到期日期</div><div class="esim-info-value" style="color:${daysLeft!==null&&daysLeft<=2?'#f87171':daysLeft!==null&&daysLeft<=5?'#fbbf24':'#c8d0e0'}">${item.expiryDate}${daysLeft!==null ? ` <span style="font-size:0.72rem">(${daysLeft>0?`剩${daysLeft}天`:'已到期'})</span>` : ''}</div></div>` : ''}
+        ${item.price ? `<div class="esim-info-item"><div class="esim-info-label">費用</div><div class="esim-info-value">${esc(item.price)}</div></div>` : ''}
+      </div>
+
+      ${item.apn ? `<div class="esim-apn"><div class="esim-apn-label">APN 設定</div>${esc(item.apn)}</div>` : ''}
+
+      ${dataUsedPct !== null ? `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <span class="esim-data-label">流量使用</span>
+          <span class="esim-data-label">${item.dataUsed}/${item.dataGb} GB (${dataUsedPct}%)</span>
+        </div>
+        <div class="esim-data-bar"><div class="esim-data-fill" style="width:${dataUsedPct}%;background:${dataUsedPct>80?'linear-gradient(90deg,#f87171,#ef4444)':dataUsedPct>60?'linear-gradient(90deg,#fbbf24,#f59e0b)':'linear-gradient(90deg,#4ade80,#22c55e)'}"></div></div>
+      </div>` : ''}
+
+      ${item.note ? `<div style="font-size:0.78rem;color:#6b7a8d;margin-bottom:8px;padding:6px 10px;background:#12172a;border-radius:6px">📝 ${esc(item.note)}</div>` : ''}
+
+      <div class="esim-footer">
+        ${item.link ? `<a href="${esc(item.link)}" target="_blank" class="wl-link-btn">🔗 購買頁面</a>` : ''}
+        <div style="margin-left:auto;display:flex;gap:5px">
+          <button class="wl-action-btn" onclick="openEsimModal(${realIdx})" title="編輯">✏️</button>
+          <button class="wl-action-btn danger" onclick="deleteEsim(${realIdx})" title="刪除">✕</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.setEsimFilter = function(m) { esimMemberFilter = m; renderEsim(); };
+
+window.openEsimModal = function(idx = null) {
+  esimEditIdx = idx;
+  document.getElementById('esimModalTitle').textContent = idx === null ? '新增 eSIM' : '編輯 eSIM';
+  const item = idx !== null ? (tripData?.esimItems || [])[idx] : null;
+  document.getElementById('esimProvider').value = item?.provider || '';
+  document.getElementById('esimStatus').value = item?.status || '未購買';
+  document.getElementById('esimPlan').value = item?.plan || '';
+  document.getElementById('esimRegion').value = item?.region || '';
+  document.getElementById('esimDataGb').value = item?.dataGb || '';
+  document.getElementById('esimDays').value = item?.days || '';
+  document.getElementById('esimPrice').value = item?.price || '';
+  document.getElementById('esimActivateDate').value = item?.activateDate || '';
+  document.getElementById('esimExpiryDate').value = item?.expiryDate || '';
+  document.getElementById('esimApn').value = item?.apn || '';
+  document.getElementById('esimNote').value = item?.note || '';
+  document.getElementById('esimLink').value = item?.link || '';
+  const members = tripData?.clMembers || [];
+  document.getElementById('esimMember').innerHTML = `<option value="">全員</option>` + members.map(m => `<option value="${esc(m)}"${item?.member===m?' selected':''}>${esc(m)}</option>`).join('');
+  esimQrData = item?.qrImg || null;
+  const prev = document.getElementById('esimQrPreview');
+  if (item?.qrImg) { prev.src = item.qrImg; prev.style.display = 'block'; document.getElementById('esimQrClear').style.display = 'block'; }
+  else { prev.src = ''; prev.style.display = 'none'; document.getElementById('esimQrClear').style.display = 'none'; }
+  document.getElementById('esimQrFile').value = '';
+  document.getElementById('esimModal').classList.add('open');
+};
+
+window.onEsimQrChange = async function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const data = await compressWlImg(file);
+  esimQrData = data;
+  const prev = document.getElementById('esimQrPreview');
+  prev.src = data; prev.style.display = 'block';
+  document.getElementById('esimQrClear').style.display = 'block';
+};
+
+window.clearEsimQr = function() {
+  esimQrData = null;
+  document.getElementById('esimQrFile').value = '';
+  const prev = document.getElementById('esimQrPreview');
+  prev.src = ''; prev.style.display = 'none';
+  document.getElementById('esimQrClear').style.display = 'none';
+};
+
+window.saveEsim = async function() {
+  const provider = document.getElementById('esimProvider').value.trim();
+  if (!provider) { showToast('請填寫電信商名稱'); return; }
+  const existing = esimEditIdx !== null ? (tripData?.esimItems || [])[esimEditIdx] : null;
+  const item = {
+    provider,
+    status: document.getElementById('esimStatus').value,
+    plan: document.getElementById('esimPlan').value.trim(),
+    region: document.getElementById('esimRegion').value.trim(),
+    dataGb: document.getElementById('esimDataGb').value || '',
+    days: document.getElementById('esimDays').value || '',
+    price: document.getElementById('esimPrice').value.trim(),
+    activateDate: document.getElementById('esimActivateDate').value,
+    expiryDate: document.getElementById('esimExpiryDate').value,
+    apn: document.getElementById('esimApn').value.trim(),
+    note: document.getElementById('esimNote').value.trim(),
+    link: document.getElementById('esimLink').value.trim(),
+    member: document.getElementById('esimMember').value,
+    qrImg: esimQrData || existing?.qrImg || null,
+    dataUsed: existing?.dataUsed || '',
+  };
+  const cur = [...(tripData?.esimItems || [])];
+  if (esimEditIdx !== null) cur[esimEditIdx] = item; else cur.push(item);
+  await setDoc(doc(db, 'trips', tripId), { esimItems: cur }, { merge: true });
+  closeModal('esimModal');
+};
+
+window.deleteEsim = async function(idx) {
+  const cur = [...(tripData?.esimItems || [])];
+  cur.splice(idx, 1);
+  await setDoc(doc(db, 'trips', tripId), { esimItems: cur }, { merge: true });
 };
 
 // ---- Entry Docs ----
