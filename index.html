@@ -246,16 +246,21 @@ select option { background: #1e2538; color: #e8ecf4; }
 .exp-toggle { font-size:0.72rem; padding:2px 7px; color:#c084fc; border:1px solid #c084fc44; border-radius:5px; background:transparent; cursor:pointer; white-space:nowrap; }
 .exp-toggle:hover { background:#c084fc22; }
 /* 必買／必吃 */
-.wl-card { background:#1a1f30; border:1px solid #2a3040; border-radius:12px; padding:14px 15px; margin-bottom:10px; transition:opacity 0.2s; }
-.wl-card.done { opacity:0.45; }
+.wl-card { background:#1a1f30; border:1px solid #2a3040; border-radius:12px; padding:12px 13px; margin-bottom:9px; transition:opacity 0.2s; }
+.wl-card.done { opacity:0.4; }
 .wl-card-top { display:flex; align-items:flex-start; gap:10px; }
-.wl-check { width:20px; height:20px; border-radius:50%; border:2px solid #3a4560; background:transparent; cursor:pointer; flex-shrink:0; margin-top:2px; appearance:none; -webkit-appearance:none; }
-.wl-check:checked { background:#22c55e; border-color:#22c55e; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.5 3.5L6 11 2.5 7.5l-1 1L6 13l8.5-8.5z'/%3E%3C/svg%3E"); background-size:12px; background-repeat:no-repeat; background-position:center; }
+.wl-check { width:18px; height:18px; border-radius:50%; border:2px solid #3a4560; background:transparent; cursor:pointer; flex-shrink:0; margin-top:3px; appearance:none; -webkit-appearance:none; }
+.wl-check:checked { background:#22c55e; border-color:#22c55e; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.5 3.5L6 11 2.5 7.5l-1 1L6 13l8.5-8.5z'/%3E%3C/svg%3E"); background-size:11px; background-repeat:no-repeat; background-position:center; }
 .wl-info { flex:1; min-width:0; }
-.wl-name { font-size:0.93rem; font-weight:600; color:#e8ecf4; margin-bottom:4px; }
-.wl-sub { font-size:0.8rem; color:#8892a4; margin-bottom:6px; }
-.wl-badges { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:6px; }
-.wl-badge { font-size:0.7rem; padding:2px 8px; border-radius:10px; font-weight:500; white-space:nowrap; }
+.wl-name-row { display:flex; align-items:flex-start; justify-content:space-between; gap:6px; margin-bottom:3px; }
+.wl-name { font-size:0.92rem; font-weight:700; color:#e8ecf4; flex:1; min-width:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.35; }
+.wl-action-btns { display:flex; gap:3px; flex-shrink:0; }
+.wl-action-btn { width:28px; height:28px; border-radius:7px; border:1px solid #2a3040; background:#12172a; cursor:pointer; font-size:0.8rem; display:flex; align-items:center; justify-content:center; text-decoration:none; }
+.wl-action-btn:hover { background:#1e2538; }
+.wl-action-btn.danger { border-color:#3d1a1a; color:#f87171; }
+.wl-sub { font-size:0.78rem; color:#8892a4; margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wl-badges { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:6px; }
+.wl-badge { font-size:0.68rem; padding:2px 7px; border-radius:10px; font-weight:500; white-space:nowrap; }
 .wl-badge-cat { background:#1e2e50; color:#60a5fa; }
 .wl-badge-priority-高 { background:#3d1a1a; color:#f87171; }
 .wl-badge-priority-中 { background:#3d2e10; color:#fbbf24; }
@@ -265,10 +270,14 @@ select option { background: #1e2538; color: #e8ecf4; }
 .wl-badge-reserve-可預約 { background:#1a2e40; color:#60a5fa; }
 .wl-badge-reserve-建議預約 { background:#2e2a10; color:#fbbf24; }
 .wl-badge-reserve-需預約 { background:#3d1a1a; color:#f87171; }
-.wl-meta-row { font-size:0.78rem; color:#6b7a8d; display:flex; flex-wrap:wrap; gap:6px 14px; }
-.wl-meta-row span { display:flex; align-items:center; gap:3px; }
-.wl-actions { display:flex; gap:5px; flex-shrink:0; align-items:flex-start; }
-.wl-price { font-size:0.9rem; font-weight:700; color:#c084fc; white-space:nowrap; }
+.wl-meta-row { display:flex; flex-direction:column; gap:3px; margin-bottom:2px; }
+.wl-meta-item { font-size:0.75rem; color:#6b7a8d; display:flex; align-items:baseline; gap:4px; overflow:hidden; }
+.wl-meta-item span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wl-meta-item .wl-icon { flex-shrink:0; }
+.wl-bottom-row { display:flex; align-items:center; gap:6px; margin-top:7px; flex-wrap:wrap; }
+.wl-price { font-size:0.82rem; font-weight:700; color:#c084fc; white-space:nowrap; }
+.wl-link-btn { font-size:0.73rem; padding:3px 9px; border-radius:6px; border:1px solid #2a3040; background:#12172a; color:#60a5fa; text-decoration:none; white-space:nowrap; }
+.wl-link-btn:hover { background:#1e2538; }
 .wl-stat-box { flex:1; background:#1a1f30; border:1px solid #2a3040; border-radius:10px; padding:10px 14px; text-align:center; }
 .wl-stat-num { font-size:1.3rem; font-weight:800; }
 .wl-stat-label { font-size:0.72rem; color:#6b7a8d; margin-top:2px; }
@@ -1551,23 +1560,27 @@ function renderMustBuy() {
         <input type="checkbox" class="wl-check" ${item.bought?'checked':''} onchange="toggleMustBuy(${realIdx},this.checked)">
         ${item.img ? `<img class="wl-thumb" src="${item.img}" onclick="openWlLightbox('${item.img}')" alt="">` : `<div class="wl-thumb-placeholder" onclick="openMustBuyModal(${realIdx})" title="點擊新增照片">${MB_CAT_ICON[item.category]||'📦'}</div>`}
         <div class="wl-info">
-          <div class="wl-name">${esc(item.name)}</div>
+          <div class="wl-name-row">
+            <div class="wl-name">${esc(item.name)}</div>
+            <div class="wl-action-btns">
+              <button class="wl-action-btn" onclick="openMustBuyModal(${realIdx})">✏️</button>
+              <button class="wl-action-btn danger" onclick="deleteMustBuy(${realIdx})">✕</button>
+            </div>
+          </div>
           ${item.shop ? `<div class="wl-sub">🏪 ${esc(item.shop)}</div>` : ''}
           <div class="wl-badges">
             <span class="wl-badge wl-badge-cat">${MB_CAT_ICON[item.category]||''} ${item.category||'其他'}</span>
-            <span class="wl-badge wl-badge-priority-${item.priority||'中'}">● ${item.priority||'中'}優先</span>
+            <span class="wl-badge wl-badge-priority-${item.priority||'中'}">● ${item.priority||'中'}</span>
             ${item.taxFree ? '<span class="wl-badge wl-badge-taxfree">🆓 免稅</span>' : ''}
           </div>
           <div class="wl-meta-row">
-            ${item.location ? `<span>📍 ${esc(item.location)}</span>` : ''}
-            ${item.note ? `<span>📝 ${esc(item.note)}</span>` : ''}
+            ${item.location ? `<div class="wl-meta-item"><span class="wl-icon">📍</span><span>${esc(item.location)}</span></div>` : ''}
+            ${item.note ? `<div class="wl-meta-item"><span class="wl-icon">📝</span><span>${esc(item.note)}</span></div>` : ''}
           </div>
-        </div>
-        <div class="wl-actions">
-          ${priceStr ? `<span class="wl-price">${priceStr}</span>` : ''}
-          ${item.link ? `<a href="${esc(item.link)}" target="_blank" class="btn btn-ghost" style="font-size:0.75rem;padding:3px 8px">🔗</a>` : ''}
-          <button class="btn btn-ghost" style="font-size:0.75rem;padding:3px 8px" onclick="openMustBuyModal(${realIdx})">✏️</button>
-          <button class="btn btn-danger" style="font-size:0.75rem;padding:3px 8px" onclick="deleteMustBuy(${realIdx})">✕</button>
+          ${(priceStr || item.link) ? `<div class="wl-bottom-row">
+            ${priceStr ? `<span class="wl-price">${priceStr}</span>` : ''}
+            ${item.link ? `<a href="${esc(item.link)}" target="_blank" class="wl-link-btn">🔗 連結</a>` : ''}
+          </div>` : ''}
         </div>
       </div>
     </div>`;
@@ -1707,27 +1720,29 @@ function renderMustEat() {
         <input type="checkbox" class="wl-check" ${item.eaten?'checked':''} onchange="toggleMustEat(${realIdx},this.checked)">
         ${item.img ? `<img class="wl-thumb" src="${item.img}" onclick="openWlLightbox('${item.img}')" alt="">` : `<div class="wl-thumb-placeholder" onclick="openMustEatModal(${realIdx})" title="點擊新增照片">${ME_CAT_ICON[item.category]||'🍽️'}</div>`}
         <div class="wl-info">
-          <div class="wl-name">${esc(item.name)}</div>
-          ${item.dish ? `<div class="wl-sub">🍽️ 必點：${esc(item.dish)}</div>` : ''}
+          <div class="wl-name-row">
+            <div class="wl-name">${esc(item.name)}</div>
+            <div class="wl-action-btns">
+              ${item.link ? `<a href="${esc(item.link)}" target="_blank" class="wl-action-btn">🔗</a>` : ''}
+              <button class="wl-action-btn" onclick="openMustEatModal(${realIdx})">✏️</button>
+              <button class="wl-action-btn danger" onclick="deleteMustEat(${realIdx})">✕</button>
+            </div>
+          </div>
+          ${item.dish ? `<div class="wl-sub">🍽️ ${esc(item.dish)}</div>` : ''}
           <div class="wl-badges">
-            <span class="wl-badge wl-badge-cat">${ME_CAT_ICON[item.category]||''} ${item.category||'其他'}</span>
+            <span class="wl-badge wl-badge-cat">${ME_CAT_ICON[item.category]||'🏷️'} ${item.category||'其他'}</span>
             <span class="wl-badge wl-badge-reserve-${item.reservation||'不需要'}">${ME_RESERVE_ICON[item.reservation]||'🚶'} ${item.reservation||'不需要'}</span>
             ${item.priceRange ? `<span class="wl-badge" style="background:#1e2538;color:#c084fc">💴 ${esc(item.priceRange)}</span>` : ''}
             ${item.rating ? `<span class="wl-badge" style="background:#1e2538;color:#fbbf24">⭐ ${esc(item.rating)}</span>` : ''}
-            ${item.childFriendly==='yes' ? '<span class="wl-badge" style="background:#1a2e1a;color:#4ade80">👶 兒童友善</span>' : item.childFriendly==='no' ? '<span class="wl-badge" style="background:#2e1a1a;color:#f87171">🚫 不適合兒童</span>' : ''}
+            ${item.childFriendly==='yes' ? '<span class="wl-badge" style="background:#1a2e1a;color:#4ade80">👶 兒童友善</span>' : item.childFriendly==='no' ? '<span class="wl-badge" style="background:#2e1a1a;color:#f87171">🚫 不宜兒童</span>' : ''}
           </div>
           <div class="wl-meta-row">
-            ${item.openHours ? `<span>🕐 ${esc(item.openHours)}</span>` : ''}
-            ${item.closedDays ? `<span>🚫 定休：${esc(item.closedDays)}</span>` : ''}
-            ${item.location ? `<span>📍 ${esc(item.location)}</span>` : ''}
-            ${item.note ? `<span>📝 ${esc(item.note)}</span>` : ''}
+            ${item.openHours ? `<div class="wl-meta-item"><span class="wl-icon">🕐</span><span>${esc(item.openHours)}</span></div>` : ''}
+            ${item.closedDays ? `<div class="wl-meta-item"><span class="wl-icon">🚫</span><span>定休 ${esc(item.closedDays)}</span></div>` : ''}
+            ${item.location ? `<div class="wl-meta-item"><span class="wl-icon">📍</span><span>${esc(item.location)}</span></div>` : ''}
+            ${item.note ? `<div class="wl-meta-item"><span class="wl-icon">📝</span><span>${esc(item.note)}</span></div>` : ''}
           </div>
-          ${item.reserveLink ? `<div style="margin-top:6px"><a href="${esc(item.reserveLink)}" target="_blank" class="btn btn-ghost" style="font-size:0.75rem;padding:3px 10px">📅 前往預約</a></div>` : ''}
-        </div>
-        <div class="wl-actions">
-          ${item.link ? `<a href="${esc(item.link)}" target="_blank" class="btn btn-ghost" style="font-size:0.75rem;padding:3px 8px">🔗</a>` : ''}
-          <button class="btn btn-ghost" style="font-size:0.75rem;padding:3px 8px" onclick="openMustEatModal(${realIdx})">✏️</button>
-          <button class="btn btn-danger" style="font-size:0.75rem;padding:3px 8px" onclick="deleteMustEat(${realIdx})">✕</button>
+          ${item.reserveLink ? `<div class="wl-bottom-row"><a href="${esc(item.reserveLink)}" target="_blank" class="wl-link-btn">📅 前往預約</a></div>` : ''}
         </div>
       </div>
     </div>`;
