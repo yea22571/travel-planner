@@ -904,6 +904,18 @@ select option { background: #1e2538; color: #e8ecf4; }
         <input type="password" id="geminiApiKey" placeholder="AIza..." autocomplete="off">
       </div>
     </div>
+    <div style="margin-top:14px">
+      <div style="font-size:0.82rem;color:#c084fc;font-weight:600;margin-bottom:8px">💱 匯率設定（兌換 1 TWD 所需外幣，或填每單位換 TWD）</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <div><label style="font-size:0.72rem;color:#6b7a8d;display:block;margin-bottom:3px">JPY → TWD</label><input type="number" id="rateJPY" placeholder="0.22" step="0.001" min="0" style="font-size:0.85rem"></div>
+        <div><label style="font-size:0.72rem;color:#6b7a8d;display:block;margin-bottom:3px">USD → TWD</label><input type="number" id="rateUSD" placeholder="32" step="0.01" min="0" style="font-size:0.85rem"></div>
+        <div><label style="font-size:0.72rem;color:#6b7a8d;display:block;margin-bottom:3px">EUR → TWD</label><input type="number" id="rateEUR" placeholder="35" step="0.01" min="0" style="font-size:0.85rem"></div>
+        <div><label style="font-size:0.72rem;color:#6b7a8d;display:block;margin-bottom:3px">KRW → TWD</label><input type="number" id="rateKRW" placeholder="0.024" step="0.001" min="0" style="font-size:0.85rem"></div>
+        <div><label style="font-size:0.72rem;color:#6b7a8d;display:block;margin-bottom:3px">HKD → TWD</label><input type="number" id="rateHKD" placeholder="4.1" step="0.01" min="0" style="font-size:0.85rem"></div>
+        <div><label style="font-size:0.72rem;color:#6b7a8d;display:block;margin-bottom:3px">CNY → TWD</label><input type="number" id="rateCNY" placeholder="4.4" step="0.01" min="0" style="font-size:0.85rem"></div>
+        <div><label style="font-size:0.72rem;color:#6b7a8d;display:block;margin-bottom:3px">THB → TWD</label><input type="number" id="rateTHB" placeholder="0.9" step="0.01" min="0" style="font-size:0.85rem"></div>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('settingsModal')">取消</button>
       <button class="btn btn-primary" onclick="saveSettings()">儲存</button>
@@ -1464,6 +1476,20 @@ const FIREBASE_CONFIG = {
 
 const CAT_COLORS = { transport:'#4299e1', hotel:'#ecc94b', food:'#fc8181', attraction:'#68d391', shopping:'#b794f4', other:'#a0aec0' };
 const CAT_LABELS = { transport:'交通', hotel:'住宿', food:'餐飲', attraction:'景點', shopping:'購物', other:'其他' };
+const DEFAULT_RATES = { TWD:1, JPY:0.22, USD:32, EUR:35, KRW:0.024, HKD:4.1, CNY:4.4, THB:0.9 };
+
+function toTWD(amount, currency) {
+  const rates = { ...DEFAULT_RATES, ...(tripData?.exchangeRates || {}) };
+  return (parseFloat(amount) || 0) * (rates[currency] ?? 1);
+}
+
+function getTWDTotal(list) {
+  return list.reduce((s, e) => s + toTWD(e.amount, e.currency || 'TWD'), 0);
+}
+
+function fmtTWD(n) {
+  return 'TWD ' + Math.round(n).toLocaleString();
+}
 
 let db, tripId;
 let tripData = null, activities = [], expenses = [], flights = [];
@@ -1583,6 +1609,11 @@ window.openModal = function(id) {
     document.getElementById('tripBudget').value = tripData.budget || '';
     document.getElementById('tripDest').value = tripData.dest || '';
     document.getElementById('geminiApiKey').value = localStorage.getItem('geminiApiKey') || '';
+    const r = tripData.exchangeRates || {};
+    ['JPY','USD','EUR','KRW','HKD','CNY','THB'].forEach(c => {
+      const el = document.getElementById('rate'+c);
+      if (el) el.value = r[c] ?? DEFAULT_RATES[c] ?? '';
+    });
   }
   if (id === 'entryAddModal') {
     entryEditIdx = null;
@@ -1604,13 +1635,19 @@ window.openModal = function(id) {
 window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
 
 window.saveSettings = async function() {
+  const exchangeRates = {};
+  ['JPY','USD','EUR','KRW','HKD','CNY','THB'].forEach(c => {
+    const v = parseFloat(document.getElementById('rate'+c)?.value);
+    if (!isNaN(v) && v > 0) exchangeRates[c] = v;
+  });
   await setDoc(doc(db, 'trips', tripId), {
     name: document.getElementById('tripName').value || '我的旅程',
     start: document.getElementById('tripStart').value,
     end: document.getElementById('tripEnd').value,
     people: parseInt(document.getElementById('tripPeople').value) || 1,
     budget: parseFloat(document.getElementById('tripBudget').value) || 0,
-    dest: document.getElementById('tripDest').value
+    dest: document.getElementById('tripDest').value,
+    exchangeRates
   }, { merge: true });
   const geminiKey = document.getElementById('geminiApiKey').value.trim();
   if (geminiKey) localStorage.setItem('geminiApiKey', geminiKey);
@@ -2682,21 +2719,21 @@ window.saveEditExpense = async function() {
 };
 
 function renderExpenses() {
-  const total = expenses.reduce((s,e)=>s+e.amount,0);
   const today = new Date().toISOString().slice(0,10);
-  const todayTotal = expenses.filter(e=>e.date===today).reduce((s,e)=>s+e.amount,0);
+  const twdTotal = getTWDTotal(expenses);
+  const twdToday = getTWDTotal(expenses.filter(e=>e.date===today));
   const budget = tripData?.budget||0;
 
-  document.getElementById('totalExp').textContent = fmt(total);
-  document.getElementById('todayExp').textContent = fmt(todayTotal);
-  document.getElementById('remainBudget').textContent = budget ? fmt(budget-total) : '—';
+  document.getElementById('totalExp').textContent = fmtTWD(twdTotal);
+  document.getElementById('todayExp').textContent = fmtTWD(twdToday);
+  document.getElementById('remainBudget').textContent = budget ? fmtTWD(budget - twdTotal) : '—';
 
   const bc = document.getElementById('budgetCard');
   if (budget > 0) {
     bc.style.display = 'block';
-    const pct = Math.min((total/budget)*100,100);
-    document.getElementById('budgetUsedLabel').textContent = `已用 ${fmt(total)}`;
-    document.getElementById('budgetTotalLabel').textContent = `預算 ${fmt(budget)}`;
+    const pct = Math.min((twdTotal/budget)*100,100);
+    document.getElementById('budgetUsedLabel').textContent = `已用 ${fmtTWD(twdTotal)}`;
+    document.getElementById('budgetTotalLabel').textContent = `預算 ${fmtTWD(budget)}`;
     const fill = document.getElementById('budgetFill');
     fill.style.width = pct + '%';
     fill.className = 'budget-fill' + (pct>100?' over':pct>80?' warn':'');
@@ -2704,8 +2741,25 @@ function renderExpenses() {
 
   const el = document.getElementById('expenseList');
   if (!expenses.length) { el.innerHTML = '<div class="empty">尚未有消費紀錄</div>'; return; }
+
+  // 幣別小計列
+  const byCurrency = {};
+  expenses.forEach(e => {
+    const c = e.currency || 'TWD';
+    byCurrency[c] = (byCurrency[c] || 0) + (parseFloat(e.amount) || 0);
+  });
+  const currencySummary = Object.entries(byCurrency)
+    .filter(([c]) => c !== 'TWD' || Object.keys(byCurrency).length === 1)
+    .map(([c, amt]) => `<span style="font-size:0.75rem;color:#8892a4;background:#12172a;padding:2px 8px;border-radius:8px">${c} ${Math.round(amt).toLocaleString()}</span>`)
+    .join('');
+
   const sorted = [...expenses].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.createdAt?.seconds-a.createdAt?.seconds);
-  el.innerHTML = sorted.map(e => `
+
+  el.innerHTML = (currencySummary ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #1e2538">${currencySummary}</div>` : '')
+    + sorted.map(e => {
+    const twdAmt = toTWD(e.amount, e.currency || 'TWD');
+    const showTwd = (e.currency && e.currency !== 'TWD');
+    return `
     <div class="expense-item">
       <div class="exp-dot" style="background:${CAT_COLORS[e.cat]}"></div>
       ${e.receiptThumb ? `<img class="receipt-thumb" src="${e.receiptThumb}" onclick="viewReceipt('${e.receiptThumb}')">` : ''}
@@ -2713,12 +2767,16 @@ function renderExpenses() {
         <div class="exp-title">${esc(e.title)}</div>
         <div class="exp-meta">${e.date||'—'} · ${CAT_LABELS[e.cat]}${e.note?` · ${esc(e.note)}`:''}</div>
       </div>
-      <div class="exp-amount">${e.currency} ${e.amount.toLocaleString()}</div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="exp-amount">${e.currency||'TWD'} ${(parseFloat(e.amount)||0).toLocaleString()}</div>
+        ${showTwd ? `<div style="font-size:0.7rem;color:#6b7a8d;margin-top:1px">≈ TWD ${Math.round(twdAmt).toLocaleString()}</div>` : ''}
+      </div>
       ${e.items?.length ? `<button class="exp-toggle" onclick="toggleSubitems('${e.id}',this)">▶ ${e.items.length}項</button>` : ''}
       <button class="btn btn-ghost" onclick="openEditExpense('${e.id}')">✏️</button>
       <button class="btn btn-danger" onclick="deleteExpense('${e.id}')">刪除</button>
     </div>
-    ${e.items?.length ? `<div class="exp-subitems" id="sub_${e.id}" style="display:none">${e.items.map(it=>`<div class="exp-subitem"><span>${esc(it.name)}</span><span>${e.currency} ${it.amount.toLocaleString()}</span></div>`).join('')}</div>` : ''}`).join('');
+    ${e.items?.length ? `<div class="exp-subitems" id="sub_${e.id}" style="display:none">${e.items.map(it=>`<div class="exp-subitem"><span>${esc(it.name)}</span><span>${e.currency||'TWD'} ${it.amount.toLocaleString()}</span></div>`).join('')}</div>` : ''}`;
+  }).join('');
 }
 
 window.toggleSubitems = function(id, btn) {
@@ -2744,28 +2802,30 @@ function renderSummary() {
     `;
   } else { infoEl.innerHTML = '<span style="color:#aaa">尚未設定旅程資訊</span>'; }
 
+  // 類別圖表（換算 TWD）
   const catTotals = {};
-  expenses.forEach(e => { catTotals[e.cat]=(catTotals[e.cat]||0)+e.amount; });
-  const maxCat = Math.max(...Object.values(catTotals),1);
+  expenses.forEach(e => { catTotals[e.cat] = (catTotals[e.cat]||0) + toTWD(e.amount, e.currency||'TWD'); });
+  const maxCat = Math.max(...Object.values(catTotals), 1);
   const catEl = document.getElementById('categoryChart');
   catEl.innerHTML = !expenses.length ? '<div class="empty">暫無消費資料</div>' :
     '<div class="chart-bars">' + Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([cat,val])=>`
       <div class="chart-row">
         <div class="chart-label">${CAT_LABELS[cat]}</div>
         <div class="chart-bar-bg"><div class="chart-bar" style="width:${(val/maxCat*100).toFixed(1)}%;background:${CAT_COLORS[cat]}"></div></div>
-        <div class="chart-val">${fmt(val)}</div>
+        <div class="chart-val">${fmtTWD(val)}</div>
       </div>`).join('') + '</div>';
 
+  // 每日圖表（換算 TWD）
   const dayTotals = {};
-  expenses.forEach(e => { if(e.date) dayTotals[e.date]=(dayTotals[e.date]||0)+e.amount; });
-  const maxDay = Math.max(...Object.values(dayTotals),1);
+  expenses.forEach(e => { if(e.date) dayTotals[e.date] = (dayTotals[e.date]||0) + toTWD(e.amount, e.currency||'TWD'); });
+  const maxDay = Math.max(...Object.values(dayTotals), 1);
   const dailyEl = document.getElementById('dailyChart');
   dailyEl.innerHTML = !Object.keys(dayTotals).length ? '<div class="empty">暫無每日資料</div>' :
     '<div class="chart-bars">' + Object.keys(dayTotals).sort().map(day=>`
       <div class="chart-row">
         <div class="chart-label" style="font-size:0.68rem">${day.slice(5)}</div>
         <div class="chart-bar-bg"><div class="chart-bar" style="width:${(dayTotals[day]/maxDay*100).toFixed(1)}%;background:#2c7be5"></div></div>
-        <div class="chart-val">${fmt(dayTotals[day])}</div>
+        <div class="chart-val">${fmtTWD(dayTotals[day])}</div>
       </div>`).join('') + '</div>';
 }
 
